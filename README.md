@@ -84,6 +84,56 @@ const customTheme = {
 | `resizable` | `boolean` | Enable drag-to-resize for columns |
 | `onRowClick` | `(record: T) => void` | Callback when a row is clicked |
 
+## 🧪 Testing
+
+We use [Vitest](https://vitest.dev/) for unit testing and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for component testing.
+
+To run the tests:
+
+```bash
+npm test
+```
+
+To run tests in watch mode:
+
+```bash
+npm test -- --watch
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps to contribute:
+
+1.  **Fork the repository**.
+2.  **Clone your fork**:
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/tablez.git
+    cd tablez
+    ```
+3.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+4.  **Create a new branch** for your feature or bugfix:
+    ```bash
+    git checkout -b feature/amazing-feature
+    ```
+5.  **Make your changes** and ensure tests pass:
+    ```bash
+    npm test
+    ```
+6.  **Commit your changes** (please use semantic commit messages):
+    ```bash
+    git commit -m "feat: add amazing feature"
+    ```
+7.  **Push to your fork**:
+    ```bash
+    git push origin feature/amazing-feature
+    ```
+8.  **Open a Pull Request**.
+
+Please ensure your code follows the existing style and conventions.
+
 ## License
 
 MIT
