@@ -1,73 +1,89 @@
-# React + TypeScript + Vite
+# @scorpionmanace/tablez
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, highly customizable, and performant React data table library.
+Features:
+- 🎨 **Theming Support**: Fully customizable themes with built-in Light/Dark modes.
+- 📐 **Resizable Columns**: Drag-to-resize support.
+- 🔧 **Modular Design**: Composable structure.
+- ⚛️ **TypeScript Ready**: Full type support out of the box.
 
-Currently, two official plugins are available:
+## 📦 Installation
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install @scorpionmanace/tablez
+# or
+yarn add @scorpionmanace/tablez
+# or
+pnpm add @scorpionmanace/tablez
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🚀 Quick Start
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Here's a minimal example to get you started:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```tsx
+import { Table } from '@scorpionmanace/tablez';
+import type { Column } from '@scorpionmanace/tablez';
+
+interface User {
+  id: number;
+  name: string;
+  role: string;
+}
+
+const data: User[] = [
+  { id: 1, name: 'Alice', role: 'Admin' },
+  { id: 2, name: 'Bob', role: 'User' },
+];
+
+const columns: Column<User>[] = [
+  { key: 'id', title: 'ID', width: 50 },
+  { key: 'name', title: 'Name' },
+  { key: 'role', title: 'Role' },
+];
+
+function App() {
+  return (
+    <Table
+      data={data}
+      columns={columns}
+      rowKey="id"
+      resizable={true} // Enable resizing
+    />
+  );
+}
 ```
+
+## 🎨 Theming
+
+Tablez supports theming. You can use the built-in themes or provide your own.
+
+```tsx
+import { Table, darkTheme, defaultTheme } from '@scorpionmanace/tablez';
+
+// Use built-in dark theme
+<Table theme={darkTheme} ... />
+
+// Or customize individual parts
+const customTheme = {
+  header: { backgroundColor: '#1e293b', color: '#fff' },
+  row: { '&:hover': { backgroundColor: '#f1f5f9' } }
+};
+```
+
+## 📜 API
+
+### `Table` Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `data` | `T[]` | Array of data records to display |
+| `columns` | `Column<T>[]` | Column definitions |
+| `rowKey` | `string` \| `(record: T) => string` | Unique key for each row |
+| `theme` | `TableTheme` | Custom styling theme object |
+| `resizable` | `boolean` | Enable drag-to-resize for columns |
+| `onRowClick` | `(record: T) => void` | Callback when a row is clicked |
+
+## License
+
+MIT
