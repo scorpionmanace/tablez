@@ -76,7 +76,13 @@ describe('Table Component', () => {
             expect(screen.queryByText('User 99')).not.toBeInTheDocument();
         });
 
-        it('updates visible rows on scroll', () => {
+        it('updates visible rows on scroll', async () => {
+            // Mock requestAnimationFrame to run immediately
+            vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
+                cb(0);
+                return 0;
+            });
+
             const largeData = Array.from({ length: 100 }, (_, i) => ({
                 id: i,
                 name: `User ${i}`,
@@ -92,17 +98,16 @@ describe('Table Component', () => {
                 />
             );
 
-            const scrollContainer = container.querySelector('div[style*="position: relative"]');
+            const scrollContainer = container.firstChild as HTMLElement;
             expect(scrollContainer).toBeInTheDocument();
 
             // Simulate scroll
-            if (scrollContainer) {
-                fireEvent.scroll(scrollContainer, { target: { scrollTop: 2500 } });
-            }
+            fireEvent.scroll(scrollContainer, { target: { scrollTop: 2500 } });
 
             // After scrolling, different rows should be visible
-            // This is a basic check - in real scenarios, you'd verify specific rows
             expect(screen.queryByText('User 0')).not.toBeInTheDocument();
+
+            vi.restoreAllMocks();
         });
     });
     describe('Sorting and Filtering', () => {

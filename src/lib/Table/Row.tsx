@@ -13,10 +13,20 @@ interface RowProps<T> {
     index: number;
     className?: string | ((record: T, index: number) => string);
     showColumnBorders?: boolean;
+    height?: number;
 }
 
-const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, index, className, showColumnBorders }: RowProps<T>) => {
+const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, index, className, showColumnBorders, height }: RowProps<T>) => {
     const rowClassName = typeof className === 'function' ? className(record, index) : className;
+
+    const rowStyle: CSSProperties = useMemo(() => ({
+        ...theme.row,
+        ...style,
+        height: height,
+        maxHeight: height,
+        boxSizing: 'border-box',
+        cursor: onClick ? 'pointer' : 'default'
+    }), [theme.row, style, height, onClick]);
 
     // Calculate sticky offsets
     const leftOffsets = useMemo(() => {
@@ -44,7 +54,7 @@ const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, inde
     return (
         <tr
             className={rowClassName}
-            style={{ ...theme.row, ...style, cursor: onClick ? 'pointer' : 'default' }}
+            style={rowStyle}
             onClick={() => onClick?.(record)}
         >
             {columns.map((col, idx) => {

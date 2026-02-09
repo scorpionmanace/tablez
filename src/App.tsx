@@ -92,14 +92,11 @@ function App() {
 
   // Base dataset state
   const [allData, setAllData] = useState<User[]>(() => {
-    const roles = ['Admin', 'Editor', 'User', 'Viewer'];
-    const statuses: ('active' | 'inactive')[] = ['active', 'inactive'];
-
-    return Array.from({ length: 100 }, (_, i) => ({
+    return Array.from({ length: 5000 }, (_, i) => ({
       id: i + 1,
       name: `User ${i + 1}`,
-      role: roles[i % roles.length],
-      status: statuses[i % statuses.length],
+      role: ['Admin', 'Editor', 'Viewer', 'Maintainer'][i % 4] as any,
+      status: i % 3 === 0 ? 'active' : 'inactive',
     }));
   });
 

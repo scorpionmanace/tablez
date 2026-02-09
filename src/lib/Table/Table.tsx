@@ -34,6 +34,7 @@ export const Table = <T extends object>({
 
     const [columns, setColumns] = useState<Column<T>[]>(initialColumns);
     const [scrollTop, setScrollTop] = useState(0);
+    const scrollAnimationFrame = useRef<number | null>(null);
     const [sortState, setSortState] = useState<TableSortState | undefined>();
     const [filters, setFilters] = useState<TableFilters>({});
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -129,12 +130,12 @@ export const Table = <T extends object>({
         return result;
     }, [data, mode, filters, sortState]);
 
-    const { visibleData, totalHeight, offsetY } = useMemo(() => {
+    const { visibleData, offsetY, bottomOffsetY } = useMemo(() => {
         if (!virtualized) {
             return {
                 visibleData: processedData,
-                totalHeight: 0,
                 offsetY: 0,
+                bottomOffsetY: 0,
             };
         }
 
@@ -147,17 +148,39 @@ export const Table = <T extends object>({
 
         return {
             visibleData: processedData.slice(startIndex, endIndex),
-            totalHeight: total,
             offsetY: startIndex * rowHeight,
+            bottomOffsetY: Math.max(0, total - (endIndex * rowHeight)),
         };
     }, [virtualized, processedData, rowHeight, scrollTop, containerHeight, overscan]);
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        setScrollTop(e.currentTarget.scrollTop);
+        if (scrollAnimationFrame.current) {
+            cancelAnimationFrame(scrollAnimationFrame.current);
+        }
+        const target = e.currentTarget;
+        scrollAnimationFrame.current = requestAnimationFrame(() => {
+            setScrollTop(target.scrollTop);
+        });
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (scrollAnimationFrame.current) {
+                cancelAnimationFrame(scrollAnimationFrame.current);
+            }
+        };
     }, []);
 
     const tableContent = (
-        <table className={className} style={{ ...theme.table, ...style, opacity: loading ? 0.6 : 1 }}>
+        <table
+            className={className}
+            style={{
+                ...theme.table,
+                ...style,
+                opacity: loading ? 0.6 : 1,
+                tableLayout: virtualized ? 'fixed' : 'auto'
+            }}
+        >
             <HeaderComponent
                 columns={columns}
                 theme={theme}
@@ -171,8 +194,12 @@ export const Table = <T extends object>({
                 showColumnBorders={showColumnBorders}
             />
             {virtualized ? (
-                <tbody style={{ height: totalHeight, position: 'relative' }}>
-                    <tr style={{ height: offsetY }} />
+                <tbody>
+                    {offsetY > 0 && (
+                        <tr style={{ height: offsetY, border: 'none' }} aria-hidden="true">
+                            <td colSpan={columns.length} style={{ padding: 0, border: 'none', height: offsetY }} />
+                        </tr>
+                    )}
                     {visibleData.map((record, index) => {
                         const originalIndex = Math.floor(offsetY / rowHeight) + index;
                         const key = rowKey
@@ -192,9 +219,15 @@ export const Table = <T extends object>({
                                 index={originalIndex}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
+                                height={rowHeight}
                             />
                         );
                     })}
+                    {bottomOffsetY > 0 && (
+                        <tr style={{ height: bottomOffsetY, border: 'none' }} aria-hidden="true">
+                            <td colSpan={columns.length} style={{ padding: 0, border: 'none', height: bottomOffsetY }} />
+                        </tr>
+                    )}
                 </tbody>
             ) : (
                 <tbody>
