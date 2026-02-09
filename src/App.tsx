@@ -161,6 +161,8 @@ function App() {
     }));
   });
 
+  const [contextMenuEnabled, setContextMenuEnabled] = useState(true);
+
   const shuffleColumns = () => {
     const next = [...currentColumns];
     // Randomly move one column (excluding fixed ones like ID)
@@ -176,6 +178,13 @@ function App() {
     const [moved] = next.splice(fromIndex, 1);
     next.splice(toIndex, 0, moved);
     setCurrentColumns(next);
+  };
+
+  const handleDataChange = (newData: User[]) => {
+    setAllData(newData);
+    if (mode === 'server') {
+      setServerData(newData.slice(0, 50));
+    }
   };
 
   const handleCellEdit = (record: User, key: string, value: any) => {
@@ -230,6 +239,7 @@ function App() {
     onUpdate: (state) => setVanillaState(state)
   }), [allData]);
 
+
   return (
     <div className="container">
       <header style={{ marginBottom: 40, borderBottom: '1px solid #eee', paddingBottom: 20 }}>
@@ -270,6 +280,7 @@ function App() {
               <button onClick={() => setResizable(!resizable)}>Resizing: {resizable ? 'ON' : 'OFF'}</button>
               <button onClick={() => setDraggable(!draggable)}>Draggable: {draggable ? 'ON' : 'OFF'}</button>
               <button onClick={() => setFrozenRows(prev => prev === 0 ? 2 : 0)}>Frozen Rows ({frozenRows})</button>
+              <button onClick={() => setContextMenuEnabled(!contextMenuEnabled)}>Context Menu: {contextMenuEnabled ? 'ON' : 'OFF'}</button>
               <button onClick={shuffleColumns} style={{ backgroundColor: '#10b981', color: 'white' }}>🔀 Shuffle Columns</button>
               <button onClick={() => setShowBorders(!showBorders)}>Separators: {showBorders ? 'ON' : 'OFF'}</button>
             </div>
@@ -279,6 +290,7 @@ function App() {
                 data={mode === 'client' ? allData : serverData}
                 columns={currentColumns}
                 onColumnUpdate={setCurrentColumns}
+                onDataChange={handleDataChange}
                 settings={{
                   theme: useDark ? darkTheme : undefined,
                   resizable,
@@ -289,6 +301,19 @@ function App() {
                   loading,
                   showColumnBorders: showBorders,
                   containerHeight: 500,
+                  contextMenu: {
+                    enabled: contextMenuEnabled,
+                    options: ['hideColumn', 'hideRow', 'insertRowBelow', 'insertRowAbove', 'insertColumnLeft', 'insertColumnRight'],
+                    customActions: [
+                      {
+                        label: 'Log User Details',
+                        onClick: (record) => {
+                          console.log('User Record:', record);
+                          alert(`User: ${record.name}\nRole: ${record.role}`);
+                        }
+                      }
+                    ]
+                  }
                 }}
                 rowSettings={{
                   key: "id",

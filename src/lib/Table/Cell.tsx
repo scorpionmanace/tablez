@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 import type { Column, TableTheme } from '../types';
 
 interface CellProps<T> {
@@ -8,6 +8,7 @@ interface CellProps<T> {
     theme: TableTheme;
     index: number;
     onEdit?: (record: T, key: string, value: any) => void;
+    onContextMenu?: (record: T, column: Column<T>, e: MouseEvent) => void;
     stickyStyles?: CSSProperties;
     showColumnBorders?: boolean;
 }
@@ -16,7 +17,16 @@ import { isImageResult } from '../core/formulas';
 import { formatValue } from '../core/formatter';
 import { Calendar } from '../components/Calendar';
 
-const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, showColumnBorders }: CellProps<T>) => {
+const CellInner = <T,>({
+    record,
+    column,
+    theme,
+    index,
+    onEdit,
+    onContextMenu,
+    stickyStyles,
+    showColumnBorders
+}: CellProps<T>) => {
     const value = (record as any)[column.key];
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
@@ -206,6 +216,7 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
                     boxSizing: 'border-box',
                     textAlign: column.type === 'number' ? 'right' : 'left',
                     ...theme.editInput,
+                    ...column.style,
                 }}
             />
         );
@@ -215,6 +226,7 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
         <td
             tabIndex={0}
             onDoubleClick={handleDoubleClick}
+            onContextMenu={(e) => onContextMenu?.(record, column, e)}
             className={column.className}
             style={{
                 ...theme.cell,

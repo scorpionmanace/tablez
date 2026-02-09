@@ -86,18 +86,21 @@ export const processData = <T extends object>(
     columns: ColumnDef[] = []
 ): T[] => {
     // 0. Pre-process formulas
+    // 0. Pre-process formulas
     const hasFormulas = columns.some(c => !!c.formula);
-    let result = data.map(item => {
-        if (!hasFormulas) return { ...item };
+    let result = data.slice();
 
-        const newItem = { ...item } as any;
-        columns.forEach(col => {
-            if (col.formula) {
-                newItem[col.key] = evaluateFormula(col.formula, newItem);
-            }
+    if (hasFormulas) {
+        result = result.map(item => {
+            const newItem = { ...item } as any;
+            columns.forEach(col => {
+                if (col.formula) {
+                    newItem[col.key] = evaluateFormula(col.formula, newItem);
+                }
+            });
+            return newItem as T;
         });
-        return newItem as T;
-    });
+    }
 
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {

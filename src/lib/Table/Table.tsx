@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import type { TableProps, TableTheme, Column, TableSortState, TableFilters, TableSortDirection } from '../types';
 import { Header } from '../Header/Header';
 import { Row } from './Row';
+import { ContextMenu } from './ContextMenu';
 import { defaultTheme } from '../Theme/theme';
 import { calculateVirtualization, processData } from '../core/engine';
 
@@ -15,6 +16,7 @@ export const Table = <T extends object>({
     onColumnUpdate,
     onColumnOrderChange,
     onCellEdit,
+    onDataChange,
     sortState: propSortState,
     filters: propFilters,
     components = {},
@@ -51,6 +53,16 @@ export const Table = <T extends object>({
     const [internalSortState, setInternalSortState] = useState<TableSortState | undefined>();
     const [internalFilters, setInternalFilters] = useState<TableFilters>({});
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Context Menu State
+    const [contextMenu, setContextMenu] = useState<{
+        visible: boolean;
+        x: number;
+        y: number;
+        record: T | null;
+        column: Column<T> | null;
+    }>({ visible: false, x: 0, y: 0, record: null, column: null });
+
 
     // Controlled vs Uncontrolled state
     const sortState = propSortState !== undefined ? propSortState : internalSortState;
@@ -238,6 +250,100 @@ export const Table = <T extends object>({
         };
     }, []);
 
+    // Context Menu Handlers
+    const onContextMenu = useCallback((record: T, column: Column<T>, e: React.MouseEvent) => {
+        // Only show if setting enabled
+        if (!settings.contextMenu?.enabled) return;
+
+        e.preventDefault();
+        setContextMenu({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            record,
+            column
+        });
+    }, [settings.contextMenu]);
+
+    const onContextMenuAction = useCallback((action: string, record: T, column: Column<T>) => {
+        setContextMenu(prev => ({ ...prev, visible: false }));
+
+        if (action === 'hideColumn') {
+            if (onColumnUpdate) {
+                const newCols = columns.filter(c => c.key !== column.key);
+                onColumnUpdate(newCols);
+            }
+        } else if (action === 'hideRow') {
+            if (onDataChange) {
+                // Determine equality - best effort if rowKey exists
+                const keyToCheck = rowKey
+                    ? (typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey])
+                    : record;
+
+                const newData = data.filter(d => {
+                    const dKey = rowKey ? (typeof rowKey === 'function' ? rowKey(d) : (d as any)[rowKey]) : d;
+                    // simple strict equality if key is primitive, or object ref equality
+                    return dKey !== keyToCheck;
+                });
+                onDataChange(newData);
+            }
+        } else if (action === 'insertRowAbove' || action === 'insertRowBelow') {
+            if (onDataChange) {
+                let index = -1;
+                // Try to find index by rowKey first
+                if (rowKey) {
+                    const keyToCheck = typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey];
+                    index = data.findIndex(d => {
+                        const dKey = typeof rowKey === 'function' ? rowKey(d) : (d as any)[rowKey];
+                        return dKey === keyToCheck;
+                    });
+                }
+                // Fallback to reference equality
+                if (index === -1) {
+                    index = data.indexOf(record);
+                }
+
+                if (index > -1) {
+                    const newData = [...data];
+                    // Clone record logic
+                    const clone = JSON.parse(JSON.stringify(record));
+                    // Basic ID reset if 'id' looks like a number
+                    if ('id' in clone && typeof clone.id === 'number') {
+                        (clone as any).id = Math.floor(Math.random() * 1000000);
+                    } else if ('id' in clone && typeof clone.id === 'string') {
+                        (clone as any).id = Math.random().toString(36).substr(2, 9);
+                    }
+
+                    if (action === 'insertRowAbove') newData.splice(index, 0, clone);
+                    else newData.splice(index + 1, 0, clone);
+
+                    onDataChange(newData);
+                }
+            }
+        }
+        else if (action === 'insertColumnLeft' || action === 'insertColumnRight') {
+            if (onColumnUpdate) {
+                const idx = columns.findIndex(c => c.key === column.key);
+                if (idx > -1) {
+                    const newCol: Column<T> = {
+                        key: `col_${Math.random().toString(36).substr(2, 9)}`,
+                        title: 'New Column',
+                        width: 150,
+                        editable: true,
+                        type: 'string'
+                    };
+                    const newCols = [...columns];
+                    if (action === 'insertColumnLeft') newCols.splice(idx, 0, newCol);
+                    else newCols.splice(idx + 1, 0, newCol);
+
+                    onColumnUpdate(newCols);
+                }
+            }
+        }
+
+    }, [columns, data, onColumnUpdate, onDataChange, rowKey]);
+
+
     const tableContent = (
         <table
             className={className}
@@ -270,9 +376,6 @@ export const Table = <T extends object>({
                             ? typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey]
                             : `frozen-${index}`;
 
-                        // Calculate sticky top position (Header height approx 40px + prev rows)
-                        // Note: For exact pixel perfection, header height should be dynamic or measured.
-                        // Assuming standard rowHeight for now for frozen rows as well.
                         const stickyTop = 40 + (index * rowHeight);
 
                         return (
@@ -283,6 +386,7 @@ export const Table = <T extends object>({
                                 theme={theme}
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
+                                onContextMenu={onContextMenu} // Pass handler
                                 index={index}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
@@ -319,6 +423,7 @@ export const Table = <T extends object>({
                                 theme={theme}
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
+                                onContextMenu={onContextMenu} // Pass handler
                                 index={originalIndex}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
@@ -350,6 +455,7 @@ export const Table = <T extends object>({
                                 theme={theme}
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
+                                onContextMenu={onContextMenu} // Pass handler
                                 index={index}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
@@ -381,6 +487,7 @@ export const Table = <T extends object>({
                                 theme={theme}
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
+                                onContextMenu={onContextMenu} // Pass handler
                                 index={originalIndex}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
@@ -438,6 +545,20 @@ export const Table = <T extends object>({
                 </div>
             )}
             {tableContent}
+
+            {contextMenu.visible && contextMenu.record && contextMenu.column && (
+                <ContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    onClose={() => setContextMenu(prev => ({ ...prev, visible: false }))}
+                    theme={theme}
+                    options={settings.contextMenu?.options || []}
+                    customActions={settings.contextMenu?.customActions}
+                    record={contextMenu.record}
+                    column={contextMenu.column}
+                    onAction={onContextMenuAction}
+                />
+            )}
         </div>
     );
 };

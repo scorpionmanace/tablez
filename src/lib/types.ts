@@ -84,6 +84,14 @@ export interface TableSettings extends BaseTableSettings {
     style?: CSSProperties;
     containerStyle?: any; // For React Native
     theme?: TableTheme;
+    contextMenu?: {
+        enabled?: boolean;
+        options?: ('hideRow' | 'hideColumn' | 'insertRowBelow' | 'insertRowAbove' | 'insertColumnLeft' | 'insertColumnRight')[];
+        customActions?: {
+            label: string;
+            onClick: (record: any, column: Column<any>) => void;
+        }[];
+    };
 }
 
 export interface RowSettings<T> extends BaseRowSettings {
@@ -112,6 +120,7 @@ export interface TableProps<T> {
     onColumnUpdate?: (columns: Column<T>[]) => void;
     onColumnOrderChange?: (columnKeys: string[]) => void;
     onCellEdit?: (record: T, key: string, value: any) => void;
+    onDataChange?: (newData: T[]) => void;
 
     // State (Optional for controlled mode)
     sortState?: TableSortState;
