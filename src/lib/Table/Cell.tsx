@@ -264,8 +264,14 @@ const CellInner = <T,>({
                 borderRight: showColumnBorders ? `1px solid ${theme.tokens?.borderColor || '#e2e8f0'}` : 'none',
                 textAlign: column.align ?? (column.type === 'number' ? 'right' : 'left'), // Default align right for numbers
                 position: isEditing ? 'relative' : (stickyStyles?.position as any || 'relative'),
+                width: column.width,
+                minWidth: column.width,
+                maxWidth: column.width,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
                 minHeight: '20px',
-                backgroundColor: isEditing ? undefined : (stickyStyles?.backgroundColor || theme.cell?.backgroundColor || theme.tokens?.backgroundColor || '#fff'),
+                backgroundColor: isEditing ? undefined : (stickyStyles?.backgroundColor || theme.cell?.backgroundColor || theme.row?.backgroundColor || theme.tokens?.backgroundColor || '#fff'),
             }}
         >
             {isEditing ? renderInput() : renderValue()}

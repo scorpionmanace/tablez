@@ -69,12 +69,16 @@ const RowInner = <T,>({
             {columns.map((col, idx) => {
                 const isFixed = !!col.fixed;
                 // Sticky styles for frozen columns
+                const cellBg = isHovered
+                    ? (theme.tokens?.rowHoverColor || '#f1f5f9')
+                    : (theme.cell?.backgroundColor || theme.row?.backgroundColor || theme.tokens?.backgroundColor || '#fff');
+
                 const stickyStyles: CSSProperties = isFixed ? {
                     position: 'sticky',
                     left: col.fixed === 'left' ? leftOffsets[idx] : undefined,
                     right: col.fixed === 'right' ? rightOffsets[col.key] : undefined,
-                    zIndex: isRowSticky ? 40 : 20, // Higher z-index for frozen cells if row is frozen too
-                    backgroundColor: theme.cell?.backgroundColor || theme.row?.backgroundColor || theme.tokens?.backgroundColor || '#fff',
+                    zIndex: isRowSticky ? 40 : 20,
+                    backgroundColor: cellBg,
                 } : {};
 
                 return (

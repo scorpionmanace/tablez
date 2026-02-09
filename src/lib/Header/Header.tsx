@@ -126,18 +126,32 @@ export const Header: FC<HeaderProps> = ({
         setStartWidth(width);
     };
 
+    const getMinColumnWidth = useCallback((col: Column) => {
+        if (typeof col.title !== 'string') return 80;
+
+        const words = col.title.split(/\s+/);
+        const longestWord = words.reduce((a, b) => a.length > b.length ? a : b, "");
+
+        // Approximate character width: 8.5px + 45px for padding, sort icon, and menu icon
+        const padding = 55;
+        const charWidth = 8.5;
+        return Math.max(60, longestWord.length * charWidth + padding);
+    }, []);
+
     const handleMouseMove = useCallback(
         (e: MouseEvent) => {
             if (resizingIndex === null) return;
 
             const diff = e.clientX - startX;
-            const newWidth = Math.max(50, startWidth + diff); // Minimum width 50px
+            const col = columns[resizingIndex];
+            const minWidth = getMinColumnWidth(col);
+            const newWidth = Math.max(minWidth, startWidth + diff);
 
             if (onResize) {
                 onResize(resizingIndex, newWidth);
             }
         },
-        [resizingIndex, startX, startWidth, onResize]
+        [resizingIndex, startX, startWidth, onResize, columns, getMinColumnWidth]
     );
 
     const handleMouseUp = useCallback(() => {
@@ -161,17 +175,21 @@ export const Header: FC<HeaderProps> = ({
         [columns]);
 
     return (
-        <thead style={{ ...theme.header, position: 'sticky', top: 0, zIndex: 40 }}>
+        <thead style={{ ...theme.header, zIndex: 40 }}>
             <tr>
                 {columns.map((col, index) => {
                     const isFixed = !!col.fixed;
-                    const stickyStyles: any = isFixed ? {
+                    const headerBg = theme.header?.backgroundColor || theme.tokens?.headerBackgroundColor || '#fff';
+                    const stickyStyles: any = {
                         position: 'sticky',
                         left: col.fixed === 'left' ? leftOffsets[index] : undefined,
                         right: col.fixed === 'right' ? rightOffsets[col.key] : undefined,
-                        zIndex: 50,
-                        backgroundColor: theme.header?.backgroundColor || theme.tokens?.headerBackgroundColor || '#fff', // Ensure opaque background
-                    } : {};
+                        backgroundColor: headerBg,
+                    };
+
+                    if (isFixed) {
+                        stickyStyles.zIndex = 50;
+                    }
 
                     const isEditing = editingColumnKey === col.key;
 
@@ -192,11 +210,17 @@ export const Header: FC<HeaderProps> = ({
                                 borderRight: showColumnBorders ? `1px solid ${theme.tokens?.borderColor || '#e2e8f0'}` : 'none',
                                 borderLeft: dragOverIndex === index ? `2px solid ${theme.tokens?.primaryColor || '#3b82f6'}` : undefined,
                                 width: col.width,
+                                minWidth: col.width,
+                                maxWidth: col.width,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
                                 textAlign: col.align,
-                                userSelect: isEditing ? 'auto' : 'none', // Allow selection while editing
+                                userSelect: isEditing ? 'auto' : 'none',
                                 cursor: isEditing ? 'text' : (draggableColumns && !isFixed && col.draggable !== false ? 'grab' : 'default'),
                                 transition: 'border-left 0.1s ease',
-                                position: 'relative'
+                                top: 0,
+                                zIndex: isFixed ? 51 : 41,
                             }}
                         >
                             <div style={{

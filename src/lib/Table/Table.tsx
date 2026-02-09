@@ -475,6 +475,10 @@ export const Table = <T extends object>({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [settings.contextMenu?.enabled, mergedItems, lastFocused, handleAction, onContextMenuAction]);
 
+    const totalWidth = useMemo(() => {
+        return columns.reduce((acc, col) => acc + (col.width || 150), 0);
+    }, [columns]);
+
     const tableContent = (
         <table
             className={className}
@@ -482,7 +486,10 @@ export const Table = <T extends object>({
                 ...theme.table,
                 ...style,
                 opacity: loading ? 0.6 : 1,
-                tableLayout: virtualized ? 'fixed' : 'auto'
+                tableLayout: 'fixed', // Always use fixed for consistent widths
+                width: totalWidth,
+                minWidth: '100%',
+                borderCollapse: 'collapse',
             }}
         >
             <HeaderComponent
