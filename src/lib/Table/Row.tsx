@@ -17,6 +17,8 @@ interface RowProps<T> {
     className?: string | ((record: T, index: number) => string);
     showColumnBorders?: boolean;
     height?: number;
+    readOnly?: boolean;
+    disabled?: boolean;
 }
 
 const RowInner = <T,>({
@@ -31,7 +33,9 @@ const RowInner = <T,>({
     index,
     className,
     showColumnBorders,
-    height
+    height,
+    readOnly,
+    disabled
 }: RowProps<T>) => {
     const [isHovered, setIsHovered] = useState(false);
 
@@ -50,8 +54,10 @@ const RowInner = <T,>({
         boxSizing: 'border-box',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'background-color 0.15s ease',
+        opacity: disabled ? 0.6 : 1,
+        pointerEvents: disabled ? 'none' : 'auto',
         ...style,
-    }), [theme.row, theme.tokens?.rowHoverColor, isHovered, style, height, onClick]);
+    }), [theme.row, theme.tokens?.rowHoverColor, isHovered, style, height, onClick, disabled]);
 
     // Calculate sticky offsets
     const { leftOffsets, rightOffsets } = useMemo(() =>
@@ -62,7 +68,7 @@ const RowInner = <T,>({
         <tr
             className={rowClassName}
             style={rowStyle}
-            onClick={() => onClick?.(record)}
+            onClick={() => !disabled && onClick?.(record)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
@@ -93,6 +99,8 @@ const RowInner = <T,>({
                         onFocus={() => onFocus?.(col)}
                         stickyStyles={stickyStyles}
                         showColumnBorders={showColumnBorders}
+                        rowReadOnly={readOnly}
+                        rowDisabled={disabled}
                     />
                 );
             })}

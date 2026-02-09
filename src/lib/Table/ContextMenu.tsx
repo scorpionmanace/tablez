@@ -12,7 +12,9 @@ interface ContextMenuProps {
     items: (ContextMenuItem | ContextMenuDefaultOption)[];
     record: any;
     column: Column<any>;
-    onAction: (action: string, record: any, column: Column<any>) => void;
+    onAction: (action: string, record: any, column: any) => void;
+    isReadOnly?: boolean;
+    isDisabled?: boolean;
 }
 
 const DEFAULT_LABELS: Record<string, string> = {
@@ -79,7 +81,9 @@ const ContextMenuItemComponent: FC<{
     onAction: (action: string, record: any, column: Column<any>) => void;
     onClose: () => void;
     depth?: number;
-}> = ({ item, theme, record, column, onAction, onClose, depth = 0 }) => {
+    isReadOnly?: boolean;
+    isDisabled?: boolean;
+}> = ({ item, theme, record, column, onAction, onClose, depth = 0, isReadOnly, isDisabled }) => {
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
     const timeoutRef = useRef<number | null>(null);
 
@@ -93,7 +97,21 @@ const ContextMenuItemComponent: FC<{
     const shortcut = isDefault ? DEFAULT_SHORTCUTS[item as string] : (item as ContextMenuItem).shortcut;
     const children = isDefault ? undefined : (item as ContextMenuItem).children;
     const type = isDefault ? 'item' : (item as ContextMenuItem).type || 'item';
-    const disabled = isDefault ? false : (item as ContextMenuItem).disabled;
+
+    // Automatic disabling based on cell state
+    const isCopyAction = item === 'copy' || item === 'copyTableWithHeader' || item === 'copyTableWithoutHeader' || (typeof item !== 'string' && (item.label === 'Copy' || item.icon === 'copy'));
+    const isCutAction = item === 'cut' || (typeof item !== 'string' && (item.label === 'Cut' || item.icon === 'cut'));
+    const isPasteAction = item === 'paste' || (typeof item !== 'string' && (item.label === 'Paste' || item.icon === 'paste'));
+
+    let disabled = isDefault ? false : (item as ContextMenuItem).disabled;
+    if (!disabled) {
+        if (isReadOnly && (isCopyAction || isCutAction)) disabled = true;
+        if (isDisabled) disabled = true;
+
+        // Disable cut/paste if not editable
+        const editable = !isReadOnly && !isDisabled && (typeof column.editable === 'function' ? column.editable(record) : !!column.editable);
+        if ((isCutAction || isPasteAction) && !editable) disabled = true;
+    }
 
     if (type === 'separator') {
         return <div style={{ height: 1, backgroundColor: theme.tokens?.borderColor || '#e2e8f0', margin: '4px 0' }} />;
@@ -215,6 +233,8 @@ const ContextMenuItemComponent: FC<{
                             onAction={onAction}
                             onClose={onClose}
                             depth={depth + 1}
+                            isReadOnly={isReadOnly}
+                            isDisabled={isDisabled}
                         />
                     ))}
                 </div>
@@ -224,16 +244,14 @@ const ContextMenuItemComponent: FC<{
 };
 
 export const ContextMenu: FC<ContextMenuProps> = ({
-    x, y, onClose, theme, items, record, column, onAction
+    x, y, onClose, theme, items, record, column, onAction, isReadOnly, isDisabled
 }) => {
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            // Only close on left clicks outside the menu
-            if (event.button !== 0) return;
-
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (e.button === 2) return;
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
                 onClose();
             }
         };
@@ -294,6 +312,8 @@ export const ContextMenu: FC<ContextMenuProps> = ({
                     column={column}
                     onAction={onAction}
                     onClose={onClose}
+                    isReadOnly={isReadOnly}
+                    isDisabled={isDisabled}
                 />
             ))}
         </div>

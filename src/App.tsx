@@ -29,10 +29,10 @@ const columns: Column<User>[] = [
   {
     key: 'id',
     title: 'ID',
-    width: 70,
-    align: 'center',
+    width: 60,
     sortable: true,
-    fixed: 'left',
+    fixed: 'left' as const,
+    readOnly: true
   },
   {
     key: 'name',
@@ -348,7 +348,11 @@ function App() {
                 ]
               }
             }}
-            rowSettings={{ key: "id", height: 48 }}
+            rowSettings={{
+              key: "id",
+              height: 48,
+              disabled: (record) => record.id % 5 === 0
+            }}
             onCellEdit={handleCellEdit}
             onSort={mode === 'server' ? handleServerSort : undefined}
             onFilter={mode === 'server' ? handleServerFilter : undefined}

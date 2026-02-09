@@ -300,6 +300,16 @@ export const Table = <T extends object>({
     const onContextMenuAction = useCallback((action: string, record: T, column: Column<T>) => {
         setContextMenu(prev => ({ ...prev, visible: false }));
 
+        const rowReadOnly = (typeof rowSettings?.readOnly === 'function' ? rowSettings.readOnly(record) : !!rowSettings?.readOnly);
+        const colReadOnly = (typeof column.readOnly === 'function' ? column.readOnly(record) : !!column.readOnly);
+        const isReadOnly = rowReadOnly || colReadOnly;
+
+        const rowDisabled = (typeof rowSettings?.disabled === 'function' ? rowSettings.disabled(record) : !!rowSettings?.disabled);
+        const colDisabled = (typeof column.disabled === 'function' ? column.disabled(record) : !!column.disabled);
+        const isDisabled = rowDisabled || colDisabled;
+
+        const editable = !isReadOnly && !isDisabled && (typeof column.editable === 'function' ? column.editable(record) : !!column.editable);
+
         if (action === 'hideColumn') {
             if (onColumnUpdate) {
                 const newCols = columns.filter(c => c.key !== column.key);
@@ -320,20 +330,26 @@ export const Table = <T extends object>({
                 if (onDataChange) onDataChange(nextData);
             }
         } else if (action === 'copy') {
-            const val = (record as any)[column.key];
-            navigator.clipboard.writeText(String(val));
+            if (!isReadOnly) {
+                const val = (record as any)[column.key];
+                navigator.clipboard.writeText(String(val));
+            }
         } else if (action === 'cut') {
-            const val = (record as any)[column.key];
-            navigator.clipboard.writeText(String(val));
-            if (onCellEdit) {
-                onCellEdit(record, column.key, '');
+            if (!isReadOnly && editable) {
+                const val = (record as any)[column.key];
+                navigator.clipboard.writeText(String(val));
+                if (onCellEdit) {
+                    onCellEdit(record, column.key, '');
+                }
             }
         } else if (action === 'paste') {
-            navigator.clipboard.readText().then(text => {
-                if (onCellEdit) onCellEdit(record, column.key, text);
-            }).catch(err => {
-                console.warn('Failed to read clipboard', err);
-            });
+            if (editable) {
+                navigator.clipboard.readText().then(text => {
+                    if (onCellEdit) onCellEdit(record, column.key, text);
+                }).catch(err => {
+                    console.warn('Failed to read clipboard', err);
+                });
+            }
         } else if (action === 'hideRow') {
             const keyToCheck = rowKey
                 ? (typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey])
@@ -404,12 +420,15 @@ export const Table = <T extends object>({
             }
 
             data.forEach(item => {
+                const rowReadOnly = typeof rowSettings?.readOnly === 'function' ? rowSettings.readOnly(item) : !!rowSettings?.readOnly;
                 rows.push(columns.map(col => {
+                    const colReadOnly = typeof col.readOnly === 'function' ? col.readOnly(item) : !!col.readOnly;
+                    if (rowReadOnly || colReadOnly) return '';
+
                     let val = col.formula ? col.formula : (item as any)[col.key];
                     if (val === null || val === undefined) return '';
 
                     const s = String(val);
-                    // Basic TSV escaping: if it contains tab, newline, or quotes, wrap in quotes and escape internal quotes
                     if (s.includes('\t') || s.includes('\n') || s.includes('"')) {
                         return `"${s.replace(/"/g, '""')}"`;
                     }
@@ -548,6 +567,9 @@ export const Table = <T extends object>({
 
                         const stickyTop = 40 + (index * rowHeight);
 
+                        const rowReadOnly = typeof rowSettings?.readOnly === 'function' ? rowSettings.readOnly(record) : !!rowSettings?.readOnly;
+                        const rowDisabled = typeof rowSettings?.disabled === 'function' ? rowSettings.disabled(record) : !!rowSettings?.disabled;
+
                         return (
                             <RowComponent
                                 key={key}
@@ -562,6 +584,8 @@ export const Table = <T extends object>({
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
                                 height={rowHeight}
+                                readOnly={rowReadOnly}
+                                disabled={rowDisabled}
                                 style={{
                                     position: 'sticky',
                                     top: stickyTop,
@@ -586,6 +610,9 @@ export const Table = <T extends object>({
                                 : (record as any)[rowKey]
                             : originalIndex;
 
+                        const rowReadOnly = typeof rowSettings?.readOnly === 'function' ? rowSettings.readOnly(record) : !!rowSettings?.readOnly;
+                        const rowDisabled = typeof rowSettings?.disabled === 'function' ? rowSettings.disabled(record) : !!rowSettings?.disabled;
+
                         return (
                             <RowComponent
                                 key={key}
@@ -600,6 +627,8 @@ export const Table = <T extends object>({
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
                                 height={rowHeight}
+                                readOnly={rowReadOnly}
+                                disabled={rowDisabled}
                             />
                         );
                     })}
@@ -619,6 +648,9 @@ export const Table = <T extends object>({
 
                         const stickyTop = 40 + (index * rowHeight);
 
+                        const rowReadOnly = typeof rowSettings?.readOnly === 'function' ? rowSettings.readOnly(record) : !!rowSettings?.readOnly;
+                        const rowDisabled = typeof rowSettings?.disabled === 'function' ? rowSettings.disabled(record) : !!rowSettings?.disabled;
+
                         return (
                             <RowComponent
                                 key={key}
@@ -633,6 +665,8 @@ export const Table = <T extends object>({
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
                                 height={rowHeight}
+                                readOnly={rowReadOnly}
+                                disabled={rowDisabled}
                                 style={{
                                     position: 'sticky',
                                     top: stickyTop,
@@ -651,6 +685,8 @@ export const Table = <T extends object>({
                         const key = rowKey
                             ? typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey]
                             : originalIndex;
+                        const rowReadOnly = typeof rowSettings?.readOnly === 'function' ? rowSettings.readOnly(record) : !!rowSettings?.readOnly;
+                        const rowDisabled = typeof rowSettings?.disabled === 'function' ? rowSettings.disabled(record) : !!rowSettings?.disabled;
 
                         return (
                             <RowComponent
@@ -666,6 +702,8 @@ export const Table = <T extends object>({
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
                                 height={rowHeight}
+                                readOnly={rowReadOnly}
+                                disabled={rowDisabled}
                             />
                         );
                     })}
@@ -720,19 +758,33 @@ export const Table = <T extends object>({
             )}
             {tableContent}
 
-            {contextMenu.visible && contextMenu.record && contextMenu.column && createPortal(
-                <ContextMenu
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    onClose={() => setContextMenu(prev => ({ ...prev, visible: false }))}
-                    theme={theme}
-                    items={mergedItems}
-                    record={contextMenu.record}
-                    column={contextMenu.column}
-                    onAction={onContextMenuAction}
-                />,
-                document.body
-            )}
+            {contextMenu.visible && contextMenu.record && contextMenu.column && (() => {
+                const record = contextMenu.record;
+                const column = contextMenu.column;
+                const rowReadOnly = typeof rowSettings?.readOnly === 'function' ? rowSettings.readOnly(record) : !!rowSettings?.readOnly;
+                const colReadOnly = typeof column.readOnly === 'function' ? column.readOnly(record) : !!column.readOnly;
+                const isReadOnly = rowReadOnly || colReadOnly;
+
+                const rowDisabled = typeof rowSettings?.disabled === 'function' ? rowSettings.disabled(record) : !!rowSettings?.disabled;
+                const colDisabled = typeof column.disabled === 'function' ? column.disabled(record) : !!column.disabled;
+                const isDisabled = rowDisabled || colDisabled;
+
+                return createPortal(
+                    <ContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        onClose={() => setContextMenu(prev => ({ ...prev, visible: false }))}
+                        theme={theme}
+                        items={mergedItems}
+                        record={record}
+                        column={column}
+                        onAction={onContextMenuAction}
+                        isReadOnly={isReadOnly}
+                        isDisabled={isDisabled}
+                    />,
+                    document.body
+                );
+            })()}
         </div>
     );
 };

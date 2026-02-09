@@ -22,6 +22,8 @@ export interface Column<T = any> {
     draggable?: boolean; // Enable/disable reordering for this column
     type?: ColumnType; // Data type for formatting and editing
     format?: ColumnFormat; // Formatting options
+    readOnly?: boolean | ((record: T) => boolean);
+    disabled?: boolean | ((record: T) => boolean);
 }
 
 export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'datetime';
@@ -50,6 +52,8 @@ export interface TableTokens {
     borderRadius?: string;
     fontFamily?: string;
     boxShadow?: string;
+    readOnlyColor?: string;
+    disabledColor?: string;
 }
 
 export interface TableTheme {
@@ -114,6 +118,8 @@ export interface RowSettings<T> extends BaseRowSettings {
     key?: string | ((record: T) => string);
     className?: string | ((record: T, index: number) => string);
     onClick?: (record: T) => void;
+    readOnly?: boolean | ((record: T) => boolean);
+    disabled?: boolean | ((record: T) => boolean);
 }
 
 export interface TableComponents {

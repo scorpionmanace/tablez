@@ -12,6 +12,8 @@ interface CellProps<T> {
     onFocus?: () => void;
     stickyStyles?: CSSProperties;
     showColumnBorders?: boolean;
+    rowReadOnly?: boolean;
+    rowDisabled?: boolean;
 }
 
 import { isImageResult } from '../core/formulas';
@@ -27,16 +29,21 @@ const CellInner = <T,>({
     onContextMenu,
     onFocus,
     stickyStyles,
-    showColumnBorders
+    showColumnBorders,
+    rowReadOnly,
+    rowDisabled
 }: CellProps<T>) => {
     const value = (record as any)[column.key];
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const editable = typeof column.editable === 'function'
+    const isReadOnly = rowReadOnly || (typeof column.readOnly === 'function' ? column.readOnly(record) : column.readOnly);
+    const isDisabled = rowDisabled || (typeof column.disabled === 'function' ? column.disabled(record) : column.disabled);
+
+    const editable = !isReadOnly && !isDisabled && (typeof column.editable === 'function'
         ? column.editable(record)
-        : column.editable;
+        : column.editable);
 
     useEffect(() => {
         if (isEditing) {
@@ -263,7 +270,7 @@ const CellInner = <T,>({
                 ...stickyStyles,
                 borderRight: showColumnBorders ? `1px solid ${theme.tokens?.borderColor || '#e2e8f0'}` : 'none',
                 textAlign: column.align ?? (column.type === 'number' ? 'right' : 'left'), // Default align right for numbers
-                position: isEditing ? 'relative' : (stickyStyles?.position as any || 'relative'),
+                position: 'relative', // Need relative for the lock icon
                 width: column.width,
                 minWidth: column.width,
                 maxWidth: column.width,
@@ -272,8 +279,27 @@ const CellInner = <T,>({
                 whiteSpace: 'nowrap',
                 minHeight: '20px',
                 backgroundColor: isEditing ? undefined : (stickyStyles?.backgroundColor || theme.cell?.backgroundColor || theme.row?.backgroundColor || theme.tokens?.backgroundColor || '#fff'),
+                opacity: isDisabled ? 0.6 : 1,
+                color: (isDisabled || isReadOnly) ? (theme.tokens?.disabledColor || '#94a3b8') : (theme.cell?.color || theme.tokens?.textColor),
+                cursor: isDisabled ? 'not-allowed' : (isReadOnly ? 'default' : (editable ? 'text' : 'default')),
+                ...(isDisabled && { pointerEvents: 'none' as const }),
             }}
         >
+            {isReadOnly && !isEditing && (
+                <div style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    color: theme.tokens?.readOnlyColor || '#94a3b8',
+                    opacity: 0.5,
+                    pointerEvents: 'none'
+                }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+            )}
             {isEditing ? renderInput() : renderValue()}
         </td>
     );
