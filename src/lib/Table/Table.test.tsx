@@ -105,4 +105,54 @@ describe('Table Component', () => {
             expect(screen.queryByText('User 0')).not.toBeInTheDocument();
         });
     });
+    describe('Sorting and Filtering', () => {
+        const sortColumns: Column<User>[] = [
+            { key: 'id', title: 'ID', sortable: true },
+            { key: 'name', title: 'Name', sortable: true, filterable: true },
+        ];
+
+        it('sorts data client-side', () => {
+            render(<Table data={data} columns={sortColumns} />);
+
+            // Open menu and sort descending
+            const menuButtons = screen.getAllByText('⋮');
+            fireEvent.click(menuButtons[1]); // Name column menu
+
+            const descButton = screen.getByText('↓ Sort Descending');
+            fireEvent.click(descButton);
+
+            const rows = screen.getAllByRole('row');
+            // Bob should be before Alice (descending)
+            expect(rows[1]).toHaveTextContent('Bob');
+            expect(rows[2]).toHaveTextContent('Alice');
+        });
+
+        it('filters data client-side', () => {
+            render(<Table data={data} columns={sortColumns} />);
+
+            // Open menu and search
+            const menuButtons = screen.getAllByText('⋮');
+            fireEvent.click(menuButtons[1]); // Name column menu
+
+            const searchInput = screen.getByPlaceholderText('Search Name...');
+            fireEvent.change(searchInput, { target: { value: 'Ali' } });
+
+            expect(screen.getByText('Alice')).toBeInTheDocument();
+            expect(screen.queryByText('Bob')).not.toBeInTheDocument();
+        });
+
+        it('calls onSort in server mode', () => {
+            const handleSort = vi.fn();
+            render(<Table data={data} columns={sortColumns} mode="server" onSort={handleSort} />);
+
+            // Open menu and sort
+            const menuButtons = screen.getAllByText('⋮');
+            fireEvent.click(menuButtons[0]); // ID column menu
+
+            const ascButton = screen.getByText('↑ Sort Ascending');
+            fireEvent.click(ascButton);
+
+            expect(handleSort).toHaveBeenCalledWith({ columnKey: 'id', direction: 'asc' });
+        });
+    });
 });

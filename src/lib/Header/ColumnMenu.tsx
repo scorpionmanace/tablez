@@ -1,0 +1,155 @@
+import { useState, useRef, useEffect } from 'react';
+import type { Column, TableTheme, TableSortDirection } from '../types';
+
+interface ColumnMenuProps {
+    column: Column;
+    theme: TableTheme;
+    onSort: (direction: TableSortDirection) => void;
+    onFilter: (value: string) => void;
+    currentSort?: TableSortDirection;
+    currentFilter?: string;
+}
+
+export const ColumnMenu = ({
+    column,
+    theme,
+    onSort,
+    onFilter,
+    currentSort,
+    currentFilter = '',
+}: ColumnMenuProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchValue, setSearchValue] = useState(currentFilter);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setSearchValue(val);
+        onFilter(val);
+    };
+
+    return (
+        <div style={{ position: 'relative', display: 'inline-block', marginLeft: '4px' }} ref={menuRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: isOpen || currentSort || currentFilter ? 1 : 0.5,
+                }}
+            >
+                ⋮
+            </button>
+
+            {isOpen && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: 0,
+                        backgroundColor: '#fff',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                        zIndex: 1000,
+                        minWidth: '150px',
+                        padding: '8px',
+                        ...theme.menu,
+                    }}
+                >
+                    {column.sortable !== false && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                            <button
+                                onClick={() => {
+                                    onSort('asc');
+                                    setIsOpen(false);
+                                }}
+                                style={{
+                                    textAlign: 'left',
+                                    padding: '4px 8px',
+                                    background: currentSort === 'asc' ? '#f0f0f0' : 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    borderRadius: '2px',
+                                    ...theme.menuItem,
+                                }}
+                            >
+                                ↑ Sort Ascending
+                            </button>
+                            <button
+                                onClick={() => {
+                                    onSort('desc');
+                                    setIsOpen(false);
+                                }}
+                                style={{
+                                    textAlign: 'left',
+                                    padding: '4px 8px',
+                                    background: currentSort === 'desc' ? '#f0f0f0' : 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    borderRadius: '2px',
+                                    ...theme.menuItem,
+                                }}
+                            >
+                                ↓ Sort Descending
+                            </button>
+                            {currentSort && (
+                                <button
+                                    onClick={() => {
+                                        onSort(null);
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        textAlign: 'left',
+                                        padding: '4px 8px',
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: '#ff4d4f',
+                                        ...theme.menuItem,
+                                    }}
+                                >
+                                    ✕ Clear Sort
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {column.filterable !== false && (
+                        <div style={{ borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                            <input
+                                type={column.searchType || 'text'}
+                                placeholder={`Search ${column.title}...`}
+                                value={searchValue}
+                                onChange={handleSearchChange}
+                                style={{
+                                    width: '100%',
+                                    padding: '6px',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    boxSizing: 'border-box',
+                                    ...theme.searchInput,
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};

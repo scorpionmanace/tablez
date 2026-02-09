@@ -7,6 +7,9 @@ export interface Column<T = any> {
     width?: number; // Force number for easier resizing calculations
     resizable?: boolean; // Per-column resize override
     align?: 'left' | 'center' | 'right';
+    sortable?: boolean;
+    filterable?: boolean;
+    searchType?: 'text' | 'number';
 }
 
 export interface TableTheme {
@@ -16,7 +19,19 @@ export interface TableTheme {
     row?: CSSProperties;
     cell?: CSSProperties;
     pagination?: CSSProperties;
+    menu?: CSSProperties;
+    menuItem?: CSSProperties;
+    searchInput?: CSSProperties;
 }
+
+export type TableSortDirection = 'asc' | 'desc' | null;
+
+export interface TableSortState {
+    columnKey: string;
+    direction: TableSortDirection;
+}
+
+export type TableFilters = Record<string, string>;
 
 export interface TableProps<T> {
     data: T[];
@@ -32,4 +47,10 @@ export interface TableProps<T> {
     rowHeight?: number; // Height of each row in pixels (required for virtualization, default: 50)
     containerHeight?: number; // Height of the scrollable container (default: 500)
     overscan?: number; // Number of extra rows to render above/below viewport (default: 3)
+
+    // Client/Server side support
+    mode?: 'client' | 'server';
+    loading?: boolean;
+    onSort?: (sortState: TableSortState) => void;
+    onFilter?: (filters: TableFilters) => void;
 }

@@ -1,15 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
-import type { Column, TableTheme } from '../types';
+import type { Column, TableTheme, TableSortDirection, TableSortState, TableFilters } from '../types';
+import { ColumnMenu } from './ColumnMenu';
 
 interface HeaderProps {
     columns: Column[];
     theme: TableTheme;
     resizable?: boolean;
     onResize?: (index: number, width: number) => void;
+    onSort: (key: string, direction: TableSortDirection) => void;
+    onFilter: (key: string, value: string) => void;
+    sortState?: TableSortState;
+    filters?: TableFilters;
 }
 
-export const Header: FC<HeaderProps> = ({ columns, theme, resizable, onResize }) => {
+export const Header: FC<HeaderProps> = ({
+    columns,
+    theme,
+    resizable,
+    onResize,
+    onSort,
+    onFilter,
+    sortState,
+    filters = {}
+}) => {
     const [resizingIndex, setResizingIndex] = useState<number | null>(null);
     const [startX, setStartX] = useState(0);
     const [startWidth, setStartWidth] = useState(0);
@@ -65,7 +79,17 @@ export const Header: FC<HeaderProps> = ({ columns, theme, resizable, onResize })
                             userSelect: 'none', // Prevent text selection while resizing
                         }}
                     >
-                        {col.title}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: col.align === 'center' ? 'center' : col.align === 'right' ? 'flex-end' : 'flex-start' }}>
+                            <span>{col.title}</span>
+                            <ColumnMenu
+                                column={col}
+                                theme={theme}
+                                onSort={(dir) => onSort(col.key, dir)}
+                                onFilter={(val) => onFilter(col.key, val)}
+                                currentSort={sortState?.columnKey === col.key ? sortState.direction : null}
+                                currentFilter={filters[col.key]}
+                            />
+                        </div>
                         {resizable && col.resizable !== false && (
                             <div
                                 onMouseDown={(e) => handleMouseDown(e, index, col.width || 100)}

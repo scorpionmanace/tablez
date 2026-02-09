@@ -23,6 +23,21 @@ export const defaultTheme: TableTheme = {
         padding: '12px 16px',
         color: '#1e293b',
     },
+    menu: {
+        backgroundColor: '#ffffff',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+        color: '#1e293b',
+    },
+    menuItem: {
+        color: '#475569',
+        fontSize: '14px',
+    },
+    searchInput: {
+        backgroundColor: '#ffffff',
+        border: '1px solid #e2e8f0',
+        color: '#1e293b',
+    }
 };
 
 export const darkTheme: TableTheme = {
@@ -50,4 +65,19 @@ export const darkTheme: TableTheme = {
         padding: '12px 16px',
         color: '#e2e8f0',
     },
+    menu: {
+        backgroundColor: '#1e293b',
+        border: '1px solid #334155',
+        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.5)',
+        color: '#f8fafc',
+    },
+    menuItem: {
+        color: '#e2e8f0',
+        fontSize: '14px',
+    },
+    searchInput: {
+        backgroundColor: '#0f172a',
+        border: '1px solid #334155',
+        color: '#f8fafc',
+    }
 };

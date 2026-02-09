@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import type { TableProps, TableTheme, Column } from '../types';
+import type { TableProps, TableTheme, Column, TableSortState, TableFilters, TableSortDirection } from '../types';
 import { Header } from '../Header/Header';
 import { Row } from './Row';
 import { defaultTheme } from '../Theme/theme';
@@ -18,9 +18,15 @@ export const Table = <T extends object>({
     rowHeight = 50,
     containerHeight = 500,
     overscan = 3,
+    mode = 'client',
+    loading = false,
+    onSort,
+    onFilter,
 }: TableProps<T>) => {
     const [columns, setColumns] = useState<Column<T>[]>(initialColumns);
     const [scrollTop, setScrollTop] = useState(0);
+    const [sortState, setSortState] = useState<TableSortState | undefined>();
+    const [filters, setFilters] = useState<TableFilters>({});
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Sync columns if props change, but try to preserve widths if keys match
@@ -35,6 +41,9 @@ export const Table = <T extends object>({
             headerCell: { ...defaultTheme.headerCell, ...userTheme?.headerCell },
             row: { ...defaultTheme.row, ...userTheme?.row },
             cell: { ...defaultTheme.cell, ...userTheme?.cell },
+            menu: { ...defaultTheme.menu, ...userTheme?.menu },
+            menuItem: { ...defaultTheme.menuItem, ...userTheme?.menuItem },
+            searchInput: { ...defaultTheme.searchInput, ...userTheme?.searchInput },
         } as TableTheme;
     }, [userTheme]);
 
@@ -42,104 +51,108 @@ export const Table = <T extends object>({
         setColumns(prev => {
             const next = [...prev];
             next[index] = { ...next[index], width: newWidth };
+            if (onColumnResize) {
+                onColumnResize(next);
+            }
             return next;
         });
-
-        // Optional: Notify parent
-        if (onColumnResize) {
-            // We pass the new state. Note that 'prev' isn't available outside, so maybe we construct it.
-            // Actually setColumns callback is safest. We can emit event in an effect or here.
-            // Let's defer emitting slightly or emit here.
-            // Current limitations: accessing latest 'columns' here might be stale if inside callback without dep.
-        }
     }, [onColumnResize]);
 
-    // Effect to trigger onColumnResize when columns change due to resize? 
-    // Probably better not to spam it, but the user might want to save layout.
+    const handleSort = useCallback((columnKey: string, direction: TableSortDirection) => {
+        const newState = { columnKey, direction };
+        setSortState(newState);
+        if (mode === 'server' && onSort) {
+            onSort(newState);
+        }
+    }, [mode, onSort]);
+
+    const handleFilter = useCallback((columnKey: string, value: string) => {
+        setFilters(prev => {
+            const next = { ...prev };
+            if (value) {
+                next[columnKey] = value;
+            } else {
+                delete next[columnKey];
+            }
+            if (mode === 'server' && onFilter) {
+                onFilter(next);
+            }
+            return next;
+        });
+    }, [mode, onFilter]);
+
+    // Client-side processing (filtering & sorting)
+    const processedData = useMemo(() => {
+        if (mode === 'server') return data;
+
+        let result = [...data];
+
+        // Filtering
+        Object.entries(filters).forEach(([key, value]) => {
+            if (!value) return;
+            result = result.filter(item => {
+                const itemValue = (item as any)[key];
+                return String(itemValue).toLowerCase().includes(value.toLowerCase());
+            });
+        });
+
+        // Sorting
+        if (sortState && sortState.direction) {
+            const { columnKey, direction } = sortState;
+            result.sort((a, b) => {
+                const valA = (a as any)[columnKey];
+                const valB = (b as any)[columnKey];
+
+                if (valA < valB) return direction === 'asc' ? -1 : 1;
+                if (valA > valB) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return result;
+    }, [data, mode, filters, sortState]);
 
     // Virtualization calculations
     const { visibleData, totalHeight, offsetY } = useMemo(() => {
         if (!virtualized) {
             return {
-                visibleData: data,
+                visibleData: processedData,
                 totalHeight: 0,
                 offsetY: 0,
             };
         }
 
-        const total = data.length * rowHeight;
+        const total = processedData.length * rowHeight;
         const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
         const endIndex = Math.min(
-            data.length,
+            processedData.length,
             Math.ceil((scrollTop + containerHeight) / rowHeight) + overscan
         );
 
         return {
-            visibleData: data.slice(startIndex, endIndex),
+            visibleData: processedData.slice(startIndex, endIndex),
             totalHeight: total,
             offsetY: startIndex * rowHeight,
         };
-    }, [virtualized, data, rowHeight, scrollTop, containerHeight, overscan]);
+    }, [virtualized, processedData, rowHeight, scrollTop, containerHeight, overscan]);
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
         setScrollTop(e.currentTarget.scrollTop);
     }, []);
 
-    // Non-virtualized rendering
-    if (!virtualized) {
-        return (
-            <div style={{ overflowX: 'auto', width: '100%' }}>
-                <table className={className} style={{ ...theme.table, ...style }}>
-                    <Header
-                        columns={columns}
-                        theme={theme}
-                        resizable={resizable}
-                        onResize={handleResize}
-                    />
-                    <tbody>
-                        {data.map((record, index) => {
-                            const key = rowKey
-                                ? typeof rowKey === 'function'
-                                    ? rowKey(record)
-                                    : (record as any)[rowKey]
-                                : index;
-
-                            return (
-                                <Row
-                                    key={key}
-                                    record={record}
-                                    columns={columns}
-                                    theme={theme}
-                                    onClick={onRowClick}
-                                />
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-        );
-    }
-
-    // Virtualized rendering
-    return (
-        <div
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            style={{
-                overflowY: 'auto',
-                overflowX: 'auto',
-                height: containerHeight,
-                width: '100%',
-                position: 'relative',
-            }}
-        >
-            <table className={className} style={{ ...theme.table, ...style }}>
-                <Header
-                    columns={columns}
-                    theme={theme}
-                    resizable={resizable}
-                    onResize={handleResize}
-                />
+    const tableContent = (
+        <table className={className} style={{ ...theme.table, ...style, opacity: loading ? 0.6 : 1 }}>
+            <Header
+                columns={columns}
+                theme={theme}
+                resizable={resizable}
+                onResize={handleResize}
+                onSort={handleSort}
+                onFilter={handleFilter}
+                sortState={sortState}
+                filters={filters}
+            />
+            {virtualized ? (
                 <tbody style={{ height: totalHeight, position: 'relative' }}>
                     <tr style={{ height: offsetY }} />
                     {visibleData.map((record, index) => {
@@ -161,7 +174,60 @@ export const Table = <T extends object>({
                         );
                     })}
                 </tbody>
-            </table>
+            ) : (
+                <tbody>
+                    {processedData.map((record, index) => {
+                        const key = rowKey
+                            ? typeof rowKey === 'function'
+                                ? rowKey(record)
+                                : (record as any)[rowKey]
+                            : index;
+
+                        return (
+                            <Row
+                                key={key}
+                                record={record}
+                                columns={columns}
+                                theme={theme}
+                                onClick={onRowClick}
+                            />
+                        );
+                    })}
+                </tbody>
+            )}
+        </table>
+    );
+
+    return (
+        <div
+            ref={scrollContainerRef}
+            onScroll={virtualized ? handleScroll : undefined}
+            style={{
+                overflowX: 'auto',
+                overflowY: virtualized ? 'auto' : 'visible',
+                width: '100%',
+                height: virtualized ? containerHeight : 'auto',
+                position: 'relative'
+            }}
+        >
+            {loading && (
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                    zIndex: 2,
+                    pointerEvents: 'none'
+                }}>
+                    <span>Loading...</span>
+                </div>
+            )}
+            {tableContent}
         </div>
     );
 };
