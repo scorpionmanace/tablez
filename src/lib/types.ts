@@ -20,6 +20,20 @@ export interface Column<T = any> {
     formula?: string; // Excel-like formula starting with '='
     freezable?: boolean; // Enable/disable freezing for this column
     draggable?: boolean; // Enable/disable reordering for this column
+    type?: ColumnType; // Data type for formatting and editing
+    format?: ColumnFormat; // Formatting options
+}
+
+export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'datetime';
+
+export interface ColumnFormat {
+    // Number options
+    decimals?: number; // 0-20
+    prefix?: string; // e.g. '$'
+    suffix?: string; // e.g. '%'
+
+    // Date/Time options
+    dateFormat?: string; // Simple format string, e.g. 'YYYY-MM-DD'
 }
 
 export interface TableTokens {

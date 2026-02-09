@@ -9,6 +9,8 @@ interface User {
   name: string;
   role: string;
   status: 'active' | 'inactive';
+  lastLogin?: string; // Date string
+  score?: number;
 }
 
 const UserIcon = () => (
@@ -61,9 +63,9 @@ const columns: Column<User>[] = [
     key: 'status',
     title: 'Status',
     sortable: true,
-    filterable: false, // Menu will hide if this and freezable are false
-    freezable: false,   // Disable freeze to hide menu
-    draggable: false,   // Disable drag to make it immovable
+    filterable: false,
+    freezable: false,
+    draggable: false,
     render: (value) => (
       <span
         style={{
@@ -80,6 +82,25 @@ const columns: Column<User>[] = [
     ),
   },
   {
+    key: 'lastLogin',
+    title: 'Last Login',
+    width: 120,
+    sortable: true,
+    editable: true,
+    type: 'date',
+    format: { dateFormat: 'YYYY-MM-DD' }
+  },
+  {
+    key: 'score',
+    title: 'Score',
+    width: 100,
+    align: 'right',
+    sortable: true,
+    editable: true,
+    type: 'number',
+    format: { decimals: 1, suffix: ' pts' }
+  },
+  {
     key: 'avatar',
     title: 'Avatar',
     width: 80,
@@ -91,7 +112,7 @@ const columns: Column<User>[] = [
   },
   {
     key: 'performance',
-    title: 'Performance',
+    title: 'Performance (Calc)',
     width: 150,
     formula: "=LOWER(CONCAT('Score: ', ROUND({id} * 1.5, 1)))",
     sortable: true,
