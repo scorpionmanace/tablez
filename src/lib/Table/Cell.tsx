@@ -69,11 +69,11 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
                 ...theme.cell,
                 ...column.style,
                 ...stickyStyles,
-                borderRight: showColumnBorders ? '1px solid #e2e8f0' : 'none',
+                borderRight: showColumnBorders ? `1px solid ${theme.tokens?.borderColor || '#e2e8f0'}` : 'none',
                 textAlign: column.align,
                 position: isEditing ? 'relative' : (stickyStyles?.position as any || 'relative'),
                 minHeight: '20px',
-                backgroundColor: isEditing ? undefined : (stickyStyles?.backgroundColor || theme.cell?.backgroundColor || (theme as any)?.table?.backgroundColor || '#fff'),
+                backgroundColor: isEditing ? undefined : (stickyStyles?.backgroundColor || theme.cell?.backgroundColor || theme.tokens?.backgroundColor || '#fff'),
             }}
         >
             {isEditing ? (
@@ -86,9 +86,6 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
                     style={{
                         width: '100%',
                         height: '100%',
-                        border: '1px solid #3b82f6',
-                        borderRadius: '2px',
-                        padding: '4px 8px',
                         fontSize: 'inherit',
                         fontFamily: 'inherit',
                         boxSizing: 'border-box',

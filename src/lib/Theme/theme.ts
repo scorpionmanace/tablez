@@ -1,10 +1,24 @@
 import type { TableTheme } from '../types';
 
 export const defaultTheme: TableTheme = {
+    tokens: {
+        primaryColor: '#3b82f6',
+        secondaryColor: '#64748b',
+        borderColor: '#e2e8f0',
+        backgroundColor: '#ffffff',
+        headerBackgroundColor: '#f8fafc',
+        rowHoverColor: '#f1f5f9',
+        textColor: '#1e293b',
+        headerTextColor: '#475569',
+        fontSize: '14px',
+        padding: '12px 16px',
+        borderRadius: '8px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+    },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
     },
     header: {
         backgroundColor: '#f8fafc',
@@ -41,10 +55,24 @@ export const defaultTheme: TableTheme = {
 };
 
 export const darkTheme: TableTheme = {
+    tokens: {
+        primaryColor: '#3b82f6',
+        secondaryColor: '#94a3b8',
+        borderColor: '#334155',
+        backgroundColor: '#1e293b',
+        headerBackgroundColor: '#0f172a',
+        rowHoverColor: '#334155',
+        textColor: '#f8fafc',
+        headerTextColor: '#e2e8f0',
+        fontSize: '14px',
+        padding: '12px 16px',
+        borderRadius: '8px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.5)',
+    },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
         backgroundColor: '#1e293b',
         color: '#f8fafc',
     },

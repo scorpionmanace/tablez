@@ -67,16 +67,74 @@ export const Table = <T extends object>({
     }, [onColumnUpdate]);
 
     const theme = useMemo(() => {
+        const tokens = { ...defaultTheme.tokens, ...userTheme?.tokens };
+
         return {
-            table: { ...defaultTheme.table, ...userTheme?.table },
-            header: { ...defaultTheme.header, ...userTheme?.header },
-            headerCell: { ...defaultTheme.headerCell, ...userTheme?.headerCell },
-            row: { ...defaultTheme.row, ...userTheme?.row },
-            cell: { ...defaultTheme.cell, ...userTheme?.cell },
-            menu: { ...defaultTheme.menu, ...userTheme?.menu },
-            menuItem: { ...defaultTheme.menuItem, ...userTheme?.menuItem },
-            searchInput: { ...defaultTheme.searchInput, ...userTheme?.searchInput },
-            editInput: { ...defaultTheme.editInput, ...userTheme?.editInput },
+            tokens,
+            table: {
+                fontFamily: tokens.fontFamily,
+                backgroundColor: tokens.backgroundColor,
+                color: tokens.textColor,
+                ...defaultTheme.table,
+                ...userTheme?.table
+            },
+            header: {
+                backgroundColor: tokens.headerBackgroundColor,
+                borderBottom: `2px solid ${tokens.borderColor}`,
+                ...defaultTheme.header,
+                ...userTheme?.header
+            },
+            headerCell: {
+                padding: tokens.padding,
+                color: tokens.headerTextColor,
+                fontSize: tokens.fontSize,
+                ...defaultTheme.headerCell,
+                ...userTheme?.headerCell
+            },
+            row: {
+                borderBottom: `1px solid ${tokens.borderColor}`,
+                ...defaultTheme.row,
+                ...userTheme?.row
+            },
+            cell: {
+                padding: tokens.padding,
+                color: tokens.textColor,
+                fontSize: tokens.fontSize,
+                ...defaultTheme.cell,
+                ...userTheme?.cell
+            },
+            menu: {
+                backgroundColor: tokens.backgroundColor,
+                border: `1px solid ${tokens.borderColor}`,
+                color: tokens.textColor,
+                boxShadow: tokens.boxShadow,
+                borderRadius: tokens.borderRadius,
+                ...defaultTheme.menu,
+                ...userTheme?.menu
+            },
+            menuItem: {
+                color: tokens.textColor,
+                fontSize: tokens.fontSize,
+                padding: '8px 12px',
+                ...defaultTheme.menuItem,
+                ...userTheme?.menuItem
+            },
+            searchInput: {
+                backgroundColor: tokens.backgroundColor,
+                border: `1px solid ${tokens.borderColor}`,
+                color: tokens.textColor,
+                borderRadius: tokens.borderRadius,
+                padding: '6px 10px',
+                ...defaultTheme.searchInput,
+                ...userTheme?.searchInput
+            },
+            editInput: {
+                padding: '4px 8px',
+                border: `1px solid ${tokens.primaryColor}`,
+                borderRadius: tokens.borderRadius,
+                ...defaultTheme.editInput,
+                ...userTheme?.editInput
+            }
         } as TableTheme;
     }, [userTheme]);
 
@@ -234,16 +292,31 @@ export const Table = <T extends object>({
         </table>
     );
 
+    const cssVariables = useMemo(() => {
+        if (!theme.tokens) return {};
+        const vars: Record<string, string> = {};
+        Object.entries(theme.tokens).forEach(([key, value]) => {
+            if (value) {
+                const cssKey = `--tz-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+                vars[cssKey] = value;
+            }
+        });
+        return vars;
+    }, [theme.tokens]);
+
     return (
         <div
             ref={scrollContainerRef}
             onScroll={virtualized ? handleScroll : undefined}
+            className={`tablez-container ${className || ''}`}
             style={{
+                ...cssVariables,
                 overflowX: 'auto',
                 overflowY: virtualized ? 'auto' : 'visible',
                 width: '100%',
                 height: virtualized ? containerHeight : 'auto',
-                position: 'relative'
+                position: 'relative',
+                ...style
             }}
         >
             {loading && (

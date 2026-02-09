@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { Column, TableTheme } from '../types';
 import { Cell } from './Cell';
@@ -18,16 +18,19 @@ interface RowProps<T> {
 }
 
 const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, index, className, showColumnBorders, height }: RowProps<T>) => {
+    const [isHovered, setIsHovered] = useState(false);
     const rowClassName = typeof className === 'function' ? className(record, index) : className;
 
     const rowStyle: CSSProperties = useMemo(() => ({
         ...theme.row,
+        backgroundColor: isHovered ? (theme.tokens?.rowHoverColor || '#f1f5f9') : theme.row?.backgroundColor,
         ...style,
         height: height,
         maxHeight: height,
         boxSizing: 'border-box',
-        cursor: onClick ? 'pointer' : 'default'
-    }), [theme.row, style, height, onClick]);
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'background-color 0.15s ease'
+    }), [theme.row, theme.tokens?.rowHoverColor, isHovered, style, height, onClick]);
 
     // Calculate sticky offsets
     const { leftOffsets, rightOffsets } = useMemo(() =>
@@ -39,6 +42,8 @@ const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, inde
             className={rowClassName}
             style={rowStyle}
             onClick={() => onClick?.(record)}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
             {columns.map((col, idx) => {
                 const isFixed = !!col.fixed;

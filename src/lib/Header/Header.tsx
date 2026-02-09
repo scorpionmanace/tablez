@@ -85,7 +85,7 @@ export const Header: FC<HeaderProps> = ({
                         left: col.fixed === 'left' ? leftOffsets[index] : undefined,
                         right: col.fixed === 'right' ? rightOffsets[col.key] : undefined,
                         zIndex: 50,
-                        backgroundColor: theme.header?.backgroundColor || '#fff', // Ensure opaque background
+                        backgroundColor: theme.header?.backgroundColor || theme.tokens?.headerBackgroundColor || '#fff', // Ensure opaque background
                     } : {};
 
                     return (
@@ -96,7 +96,7 @@ export const Header: FC<HeaderProps> = ({
                                 ...theme.headerCell,
                                 ...col.headerStyle,
                                 ...stickyStyles,
-                                borderRight: showColumnBorders ? '1px solid #e2e8f0' : 'none',
+                                borderRight: showColumnBorders ? `1px solid ${theme.tokens?.borderColor || '#e2e8f0'}` : 'none',
                                 width: col.width,
                                 textAlign: col.align,
                                 userSelect: 'none', // Prevent text selection while resizing

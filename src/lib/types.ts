@@ -19,7 +19,24 @@ export interface Column<T = any> {
     fixed?: 'left' | 'right'; // Freeze column to left or right
 }
 
+export interface TableTokens {
+    primaryColor?: string;
+    secondaryColor?: string;
+    borderColor?: string;
+    backgroundColor?: string;
+    headerBackgroundColor?: string;
+    rowHoverColor?: string;
+    textColor?: string;
+    headerTextColor?: string;
+    fontSize?: string;
+    padding?: string;
+    borderRadius?: string;
+    fontFamily?: string;
+    boxShadow?: string;
+}
+
 export interface TableTheme {
+    tokens?: TableTokens;
     table?: CSSProperties;
     header?: CSSProperties;
     headerCell?: CSSProperties;

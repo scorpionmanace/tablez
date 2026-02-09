@@ -3,7 +3,7 @@
 A modern, highly customizable, and performant React data table library.
 
 Features:
-- 🎨 **Theming Support**: Fully customizable themes with built-in Light/Dark modes.
+- 🎨 **Theming Support**: Fully customizable token-based themes with dynamic variable support.
 - 📐 **Resizable Columns**: Drag-to-resize support.
 - ⚡ **Virtual Scrolling**: Efficient rendering for large datasets.
 - 🌳 **Tree Shaking**: Optimized for dead-code elimination.
@@ -113,6 +113,67 @@ const virtualization = computed(() => calculateVirtualization({
 
 ### React Native
 Since the core logic doesn't use the DOM, you can use it to drive a `FlatList` or custom scroll view in React Native for high-performance tables.
+
+---
+
+## 🎨 Bring Your Own Theme (BYOT)
+
+Tablez features a powerful, two-layered theming system: **Tokens** and **Component Overrides**.
+
+### Token-Based Theming (Easiest)
+Tokens are high-level variables that drive the look and feel of the entire table.
+
+```tsx
+const midnightTheme = {
+  tokens: {
+    primaryColor: '#8b5cf6',
+    backgroundColor: '#0f172a',
+    headerBackgroundColor: '#1e293b',
+    borderColor: '#334155',
+    textColor: '#f8fafc',
+    headerTextColor: '#e2e8f0',
+    rowHoverColor: '#334155',
+    borderRadius: '12px',
+    padding: '16px 24px'
+  }
+};
+
+<Table
+  data={data}
+  columns={columns}
+  settings={{ theme: midnightTheme }}
+/>
+```
+
+### Available Tokens
+| Token | Description |
+|-------|-------------|
+| `primaryColor` | Accent color for inputs and active states |
+| `borderColor` | Color for all borders and separators |
+| `backgroundColor`| Main background color |
+| `headerBackgroundColor`| Background for the sticky header |
+| `rowHoverColor` | Background for rows on hover |
+| `textColor` | Primary body text color |
+| `headerTextColor`| Header text color |
+| `padding` | Global cell padding |
+| `borderRadius` | Corner radius for inputs and menus |
+| `fontFamily` | Font stack |
+
+### Component Overrides (Advanced)
+For surgery-grade customization, you can override specific CSS properties for any part of the table. Component overrides take precedence over tokens.
+
+```tsx
+const customTheme = {
+  headerCell: {
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em'
+  },
+  menuItem: {
+    fontSize: '12px',
+    fontWeight: 'bold'
+  }
+};
+```
 
 ---
 

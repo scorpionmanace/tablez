@@ -63,13 +63,13 @@ export const ColumnMenu = ({
                         position: 'absolute',
                         top: '100%',
                         right: 0,
-                        backgroundColor: '#fff',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                         zIndex: 1000,
                         minWidth: '160px',
                         padding: '8px',
+                        backgroundColor: theme.tokens?.backgroundColor || '#fff',
+                        border: `1px solid ${theme.tokens?.borderColor || '#ddd'}`,
+                        borderRadius: theme.tokens?.borderRadius || '4px',
+                        boxShadow: theme.tokens?.boxShadow || '0 2px 10px rgba(0,0,0,0.1)',
                         ...theme.menu,
                     }}
                 >
@@ -84,10 +84,11 @@ export const ColumnMenu = ({
                                     style={{
                                         textAlign: 'left',
                                         padding: '4px 8px',
-                                        background: currentSort === 'asc' ? '#f0f0f0' : 'none',
+                                        background: currentSort === 'asc' ? (theme.tokens?.rowHoverColor || '#f0f0f0') : 'none',
                                         border: 'none',
                                         cursor: 'pointer',
                                         borderRadius: '2px',
+                                        color: theme.tokens?.textColor,
                                         ...theme.menuItem,
                                     }}
                                 >
@@ -101,10 +102,11 @@ export const ColumnMenu = ({
                                     style={{
                                         textAlign: 'left',
                                         padding: '4px 8px',
-                                        background: currentSort === 'desc' ? '#f0f0f0' : 'none',
+                                        background: currentSort === 'desc' ? (theme.tokens?.rowHoverColor || '#f0f0f0') : 'none',
                                         border: 'none',
                                         cursor: 'pointer',
                                         borderRadius: '2px',
+                                        color: theme.tokens?.textColor,
                                         ...theme.menuItem,
                                     }}
                                 >
@@ -130,7 +132,7 @@ export const ColumnMenu = ({
                                         ✕ Clear Sort
                                     </button>
                                 )}
-                                <div style={{ borderTop: '1px solid #eee', margin: '4px 0' }} />
+                                <div style={{ borderTop: `1px solid ${theme.tokens?.borderColor || '#eee'}`, margin: '4px 0' }} />
                             </>
                         )}
 
@@ -144,9 +146,10 @@ export const ColumnMenu = ({
                                     style={{
                                         textAlign: 'left',
                                         padding: '4px 8px',
-                                        background: column.fixed === 'left' ? '#f0f0f0' : 'none',
+                                        background: column.fixed === 'left' ? (theme.tokens?.rowHoverColor || '#f0f0f0') : 'none',
                                         border: 'none',
                                         cursor: 'pointer',
+                                        color: theme.tokens?.textColor,
                                         ...theme.menuItem,
                                     }}
                                 >
@@ -160,9 +163,10 @@ export const ColumnMenu = ({
                                     style={{
                                         textAlign: 'left',
                                         padding: '4px 8px',
-                                        background: column.fixed === 'right' ? '#f0f0f0' : 'none',
+                                        background: column.fixed === 'right' ? (theme.tokens?.rowHoverColor || '#f0f0f0') : 'none',
                                         border: 'none',
                                         cursor: 'pointer',
+                                        color: theme.tokens?.textColor,
                                         ...theme.menuItem,
                                     }}
                                 >
@@ -193,7 +197,7 @@ export const ColumnMenu = ({
                     </div>
 
                     {column.filterable !== false && (
-                        <div style={{ borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                        <div style={{ borderTop: `1px solid ${theme.tokens?.borderColor || '#eee'}`, paddingTop: '8px' }}>
                             <input
                                 type={column.searchType || 'text'}
                                 placeholder={`Search ${column.title}...`}
@@ -202,10 +206,11 @@ export const ColumnMenu = ({
                                 style={{
                                     width: '100%',
                                     padding: '6px',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
                                     boxSizing: 'border-box',
+                                    backgroundColor: theme.tokens?.backgroundColor || '#fff',
+                                    border: `1px solid ${theme.tokens?.borderColor || '#ddd'}`,
+                                    color: theme.tokens?.textColor,
+                                    borderRadius: theme.tokens?.borderRadius || '4px',
                                     ...theme.searchInput,
                                 }}
                             />
