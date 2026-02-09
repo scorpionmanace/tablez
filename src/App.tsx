@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, darkTheme } from './lib';
 import type { Column } from './lib';
 import './App.css';
@@ -9,14 +9,6 @@ interface User {
   role: string;
   status: 'active' | 'inactive';
 }
-
-const data: User[] = [
-  { id: 1, name: 'Alice Johnson', role: 'Admin', status: 'active' },
-  { id: 2, name: 'Bob Smith', role: 'Editor', status: 'inactive' },
-  { id: 3, name: 'Charlie Brown', role: 'User', status: 'active' },
-  { id: 4, name: 'Diana Prince', role: 'Admin', status: 'active' },
-  { id: 5, name: 'Evan Wright', role: 'User', status: 'inactive' },
-];
 
 const columns: Column<User>[] = [
   { key: 'id', title: 'ID', width: 50, align: 'center' },
@@ -45,18 +37,51 @@ const columns: Column<User>[] = [
 function App() {
   const [useDark, setUseDark] = useState(false);
   const [resizable, setResizable] = useState(true);
+  const [virtualized, setVirtualized] = useState(false);
+  const [dataSize, setDataSize] = useState<'small' | 'large'>('small');
+
+  // Generate data based on size
+  const data = useMemo(() => {
+    const size = dataSize === 'small' ? 5 : 1000;
+    const roles = ['Admin', 'Editor', 'User', 'Viewer'];
+    const statuses: ('active' | 'inactive')[] = ['active', 'inactive'];
+
+    return Array.from({ length: size }, (_, i) => ({
+      id: i + 1,
+      name: `User ${i + 1}`,
+      role: roles[i % roles.length],
+      status: statuses[i % statuses.length],
+    }));
+  }, [dataSize]);
 
   return (
     <div className="container">
       <h1>Tablez Library Demo</h1>
 
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button onClick={() => setUseDark(!useDark)}>
           Toggle Theme ({useDark ? 'Dark' : 'Light'})
         </button>
         <button onClick={() => setResizable(!resizable)}>
           {resizable ? 'Disable' : 'Enable'} Resizing
         </button>
+        <button onClick={() => setVirtualized(!virtualized)}>
+          {virtualized ? 'Disable' : 'Enable'} Virtualization
+        </button>
+        <button onClick={() => setDataSize(dataSize === 'small' ? 'large' : 'small')}>
+          {dataSize === 'small' ? 'Load 1000 Rows' : 'Load 5 Rows'}
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
+        <strong>Current Settings:</strong> {data.length} rows,
+        Virtualization: {virtualized ? 'ON' : 'OFF'},
+        Resizing: {resizable ? 'ON' : 'OFF'}
+        {virtualized && dataSize === 'large' && (
+          <span style={{ color: '#16a34a', marginLeft: 8 }}>
+            ⚡ Only rendering visible rows for better performance!
+          </span>
+        )}
       </div>
 
       <div style={{ border: '1px solid #ccc', borderRadius: 8, overflow: 'hidden' }}>
@@ -67,6 +92,10 @@ function App() {
           theme={useDark ? darkTheme : undefined}
           onRowClick={(record) => alert(`Clicked: ${record.name}`)}
           resizable={resizable}
+          virtualized={virtualized}
+          rowHeight={50}
+          containerHeight={600}
+          overscan={5}
         />
       </div>
     </div>

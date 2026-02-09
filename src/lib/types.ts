@@ -28,4 +28,8 @@ export interface TableProps<T> {
     onColumnResize?: (columns: Column<T>[]) => void;
     className?: string;
     style?: CSSProperties;
+    virtualized?: boolean; // Enable virtual scrolling for large datasets
+    rowHeight?: number; // Height of each row in pixels (required for virtualization, default: 50)
+    containerHeight?: number; // Height of the scrollable container (default: 500)
+    overscan?: number; // Number of extra rows to render above/below viewport (default: 3)
 }

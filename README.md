@@ -4,6 +4,7 @@ A modern, highly customizable, and performant React data table library.
 Features:
 - 🎨 **Theming Support**: Fully customizable themes with built-in Light/Dark modes.
 - 📐 **Resizable Columns**: Drag-to-resize support.
+- ⚡ **Virtual Scrolling**: Efficient rendering for large datasets with toggleable virtualization.
 - 🔧 **Modular Design**: Composable structure.
 - ⚛️ **TypeScript Ready**: Full type support out of the box.
 
@@ -83,6 +84,35 @@ const customTheme = {
 | `theme` | `TableTheme` | Custom styling theme object |
 | `resizable` | `boolean` | Enable drag-to-resize for columns |
 | `onRowClick` | `(record: T) => void` | Callback when a row is clicked |
+| `virtualized` | `boolean` | Enable virtual scrolling (default: `false`) |
+| `rowHeight` | `number` | Height of each row in pixels for virtualization (default: `50`) |
+| `containerHeight` | `number` | Height of the scrollable container (default: `500`) |
+| `overscan` | `number` | Number of extra rows to render above/below viewport (default: `3`) |
+
+## ⚡ Virtual Scrolling
+
+For large datasets (1000+ rows), enable virtualization to improve performance:
+
+```tsx
+<Table
+  data={largeDataset}
+  columns={columns}
+  virtualized={true}
+  rowHeight={50}
+  containerHeight={600}
+  overscan={5}
+/>
+```
+
+**When to use virtualization:**
+- ✅ Large datasets (1000+ rows)
+- ✅ Fixed row heights
+- ✅ Performance is critical
+
+**When NOT to use virtualization:**
+- ❌ Small datasets (< 100 rows)
+- ❌ Variable row heights
+- ❌ Need to print/export all rows at once
 
 ## 🧪 Testing
 

@@ -37,4 +37,72 @@ describe('Table Component', () => {
         expect(handleClick).toHaveBeenCalledTimes(1);
         expect(handleClick).toHaveBeenCalledWith(data[0]);
     });
+
+    describe('Virtualization', () => {
+        it('renders all rows when virtualization is disabled', () => {
+            const largeData = Array.from({ length: 100 }, (_, i) => ({
+                id: i,
+                name: `User ${i}`,
+            }));
+
+            render(<Table data={largeData} columns={columns} virtualized={false} />);
+
+            // All rows should be rendered
+            expect(screen.getByText('User 0')).toBeInTheDocument();
+            expect(screen.getByText('User 99')).toBeInTheDocument();
+        });
+
+        it('renders only visible rows when virtualization is enabled', () => {
+            const largeData = Array.from({ length: 100 }, (_, i) => ({
+                id: i,
+                name: `User ${i}`,
+            }));
+
+            render(
+                <Table
+                    data={largeData}
+                    columns={columns}
+                    virtualized={true}
+                    rowHeight={50}
+                    containerHeight={500}
+                    overscan={3}
+                />
+            );
+
+            // First few rows should be visible (within viewport + overscan)
+            expect(screen.getByText('User 0')).toBeInTheDocument();
+
+            // Rows far outside viewport should not be rendered
+            expect(screen.queryByText('User 99')).not.toBeInTheDocument();
+        });
+
+        it('updates visible rows on scroll', () => {
+            const largeData = Array.from({ length: 100 }, (_, i) => ({
+                id: i,
+                name: `User ${i}`,
+            }));
+
+            const { container } = render(
+                <Table
+                    data={largeData}
+                    columns={columns}
+                    virtualized={true}
+                    rowHeight={50}
+                    containerHeight={500}
+                />
+            );
+
+            const scrollContainer = container.querySelector('div[style*="position: relative"]');
+            expect(scrollContainer).toBeInTheDocument();
+
+            // Simulate scroll
+            if (scrollContainer) {
+                fireEvent.scroll(scrollContainer, { target: { scrollTop: 2500 } });
+            }
+
+            // After scrolling, different rows should be visible
+            // This is a basic check - in real scenarios, you'd verify specific rows
+            expect(screen.queryByText('User 0')).not.toBeInTheDocument();
+        });
+    });
 });
