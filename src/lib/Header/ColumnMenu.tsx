@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Column, TableTheme, TableSortDirection } from '../types';
 
 interface ColumnMenuProps {
@@ -40,11 +41,38 @@ export const ColumnMenu = ({
         onFilter(val);
     };
 
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            const MENU_WIDTH = 180; // Approximate min-width + padding
+            const GAP = 4;
+
+            let left = rect.right - MENU_WIDTH + window.scrollX;
+            let top = rect.bottom + GAP + window.scrollY;
+
+            // If menu overflows left side, align it with the left side of the button
+            if (left < 10) {
+                left = rect.left + window.scrollX;
+            }
+
+            // If it now overflows the right side (unlikely but possible), shift it back
+            if (left + MENU_WIDTH > window.innerWidth - 10) {
+                left = window.innerWidth - MENU_WIDTH - 10;
+            }
+
+            setMenuPosition({ top, left });
+        }
+    }, [isOpen]);
+
     const iconColor = theme.tokens?.headerTextColor || theme.tokens?.textColor || '#475569';
 
     return (
-        <div style={{ position: 'relative', display: 'inline-block', marginLeft: '4px' }} ref={menuRef}>
+        <div style={{ display: 'inline-block', marginLeft: '4px' }}>
             <button
+                ref={buttonRef}
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
                     background: 'none',
@@ -72,13 +100,14 @@ export const ColumnMenu = ({
                 </div>
             </button>
 
-            {isOpen && (
+            {isOpen && createPortal(
                 <div
+                    ref={menuRef}
                     style={{
                         position: 'absolute',
-                        top: '100%',
-                        right: 0,
-                        zIndex: 1000,
+                        top: menuPosition.top,
+                        left: menuPosition.left,
+                        zIndex: 2000,
                         minWidth: '160px',
                         padding: '8px',
                         backgroundColor: theme.tokens?.backgroundColor || '#fff',
@@ -231,7 +260,8 @@ export const ColumnMenu = ({
                             />
                         </div>
                     )}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

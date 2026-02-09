@@ -212,9 +212,6 @@ export const Header: FC<HeaderProps> = ({
                                 width: col.width,
                                 minWidth: col.width,
                                 maxWidth: col.width,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
                                 textAlign: col.align,
                                 userSelect: isEditing ? 'auto' : 'none',
                                 cursor: isEditing ? 'text' : (draggableColumns && !isFixed && col.draggable !== false ? 'grab' : 'default'),
@@ -299,6 +296,7 @@ export const Header: FC<HeaderProps> = ({
                                         col.headerRender(col)
                                     ) : (
                                         <span style={{
+                                            display: 'block',
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
                                             whiteSpace: 'nowrap'

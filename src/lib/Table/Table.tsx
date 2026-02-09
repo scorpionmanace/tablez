@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { TableProps, TableTheme, Column, TableSortState, TableFilters, TableSortDirection, ContextMenuItem, ContextMenuDefaultOption } from '../types';
 import { Header } from '../Header/Header';
 import { Row } from './Row';
@@ -279,10 +280,13 @@ export const Table = <T extends object>({
 
     // Context Menu Handlers
     const onContextMenu = useCallback((record: T, column: Column<T>, e: React.MouseEvent) => {
-        // Only show if setting enabled
-        if (!settings.contextMenu?.enabled) return;
+        const contextMenuEnabled = settings.contextMenu?.enabled;
+
+        if (!contextMenuEnabled) return;
 
         e.preventDefault();
+        e.stopPropagation();
+
         setLastFocused({ record, column });
         setContextMenu({
             visible: true,
@@ -291,7 +295,7 @@ export const Table = <T extends object>({
             record,
             column
         });
-    }, [settings.contextMenu]);
+    }, [settings.contextMenu?.enabled]);
 
     const onContextMenuAction = useCallback((action: string, record: T, column: Column<T>) => {
         setContextMenu(prev => ({ ...prev, visible: false }));
@@ -694,7 +698,7 @@ export const Table = <T extends object>({
             )}
             {tableContent}
 
-            {contextMenu.visible && contextMenu.record && contextMenu.column && (
+            {contextMenu.visible && contextMenu.record && contextMenu.column && createPortal(
                 <ContextMenu
                     x={contextMenu.x}
                     y={contextMenu.y}
@@ -704,7 +708,8 @@ export const Table = <T extends object>({
                     record={contextMenu.record}
                     column={contextMenu.column}
                     onAction={onContextMenuAction}
-                />
+                />,
+                document.body
             )}
         </div>
     );

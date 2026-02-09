@@ -212,6 +212,9 @@ export const ContextMenu: FC<ContextMenuProps> = ({
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
+            // Only close on left clicks outside the menu
+            if (event.button !== 0) return;
+
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 onClose();
             }
@@ -226,7 +229,7 @@ export const ContextMenu: FC<ContextMenuProps> = ({
         position: 'fixed',
         top: y,
         left: x,
-        zIndex: 1000,
+        zIndex: 2000,
         backgroundColor: theme.menu?.backgroundColor || '#fff',
         border: theme.menu?.border || '1px solid #e2e8f0',
         borderRadius: theme.menu?.borderRadius || '6px',
@@ -241,21 +244,26 @@ export const ContextMenu: FC<ContextMenuProps> = ({
     const [pos, setPos] = useState({ left: x, top: y });
 
     useEffect(() => {
-        if (menuRef.current) {
-            const rect = menuRef.current.getBoundingClientRect();
-            let newX = x;
-            let newY = y;
+        const updatePos = () => {
+            if (menuRef.current) {
+                const rect = menuRef.current.getBoundingClientRect();
+                let newX = x;
+                let newY = y;
 
-            if (x + rect.width > window.innerWidth) {
-                newX = x - rect.width;
-            }
-            if (y + rect.height > window.innerHeight) {
-                newY = y - rect.height;
-            }
+                if (x + rect.width > window.innerWidth) {
+                    newX = x - rect.width;
+                }
+                if (y + rect.height > window.innerHeight) {
+                    newY = y - rect.height;
+                }
 
-            setPos({ left: Math.max(0, newX), top: Math.max(0, newY) });
-        }
-    }, [x, y, items.length]);
+                setPos({ left: Math.max(0, newX), top: Math.max(0, newY) });
+            }
+        };
+
+        const frame = requestAnimationFrame(updatePos);
+        return () => cancelAnimationFrame(frame);
+    }, [x, y, items]);
 
     return (
         <div ref={menuRef} style={{ ...style, ...pos }}>
