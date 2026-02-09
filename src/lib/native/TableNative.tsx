@@ -105,10 +105,39 @@ export const TableNative = <T extends object>({
                             stickyStyle
                         ]}
                     >
-                        <Text style={[styles.headerText, theme?.headerCell as any]}>
-                            {typeof col.title === 'string' ? col.title : col.key}
-                            {sortState?.columnKey === col.key ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text
+                                numberOfLines={1}
+                                style={[styles.headerText, theme?.headerCell as any, { flex: 1 }]}
+                            >
+                                {typeof col.title === 'string' ? col.title : col.key}
+                            </Text>
+                            {col.sortable && (
+                                <View style={{ marginLeft: 6, opacity: sortState?.columnKey === col.key ? 1 : 0.2 }}>
+                                    <View style={{
+                                        width: 0,
+                                        height: 0,
+                                        borderLeftWidth: 4,
+                                        borderRightWidth: 4,
+                                        borderBottomWidth: 5,
+                                        borderLeftColor: 'transparent',
+                                        borderRightColor: 'transparent',
+                                        borderBottomColor: sortState?.columnKey === col.key && sortState.direction === 'asc' ? (theme?.tokens?.primaryColor || '#475569') : '#94a3b8',
+                                        marginBottom: 2
+                                    }} />
+                                    <View style={{
+                                        width: 0,
+                                        height: 0,
+                                        borderLeftWidth: 4,
+                                        borderRightWidth: 4,
+                                        borderTopWidth: 5,
+                                        borderLeftColor: 'transparent',
+                                        borderRightColor: 'transparent',
+                                        borderTopColor: sortState?.columnKey === col.key && sortState.direction === 'desc' ? (theme?.tokens?.primaryColor || '#475569') : '#94a3b8',
+                                    }} />
+                                </View>
+                            )}
+                        </View>
                     </TouchableOpacity>
                 );
             })}

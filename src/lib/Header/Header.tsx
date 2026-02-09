@@ -139,10 +139,27 @@ export const Header: FC<HeaderProps> = ({
                                             {col.title}
                                         </span>
                                     )}
-                                    {sortState?.columnKey === col.key && (
-                                        <span style={{ fontSize: '12px', opacity: 0.8 }}>
-                                            {sortState.direction === 'asc' ? '↑' : sortState.direction === 'desc' ? '↓' : ''}
-                                        </span>
+                                    {col.sortable && (
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            color: sortState?.columnKey === col.key ? (theme.tokens?.primaryColor || theme.tokens?.headerTextColor || '#475569') : '#cbd5e1',
+                                            marginLeft: '4px',
+                                            opacity: sortState?.columnKey === col.key ? 1 : 0.4
+                                        }}>
+                                            <svg width="8" height="6" viewBox="0 0 8 6" fill="none" style={{
+                                                marginBottom: '1px',
+                                                opacity: sortState?.columnKey === col.key && sortState.direction === 'asc' ? 1 : 0.3
+                                            }}>
+                                                <path d="M4 0L7.4641 5.25H0.535898L4 0Z" fill="currentColor" />
+                                            </svg>
+                                            <svg width="8" height="6" viewBox="0 0 8 6" fill="none" style={{
+                                                marginTop: '1px',
+                                                opacity: sortState?.columnKey === col.key && sortState.direction === 'desc' ? 1 : 0.3
+                                            }}>
+                                                <path d="M4 6L0.535898 0.75L7.4641 0.750001L4 6Z" fill="currentColor" />
+                                            </svg>
+                                        </div>
                                     )}
                                 </div>
                                 <ColumnMenu
