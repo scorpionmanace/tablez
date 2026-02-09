@@ -64,6 +64,15 @@ export interface SortState {
 
 export type Filters = Record<string, string>;
 
+import { evaluateFormula } from './formulas';
+
+export interface ColumnDef {
+    key: string;
+    width?: number;
+    fixed?: 'left' | 'right';
+    formula?: string;
+}
+
 /**
  * Processes data with sorting and filtering.
  * Framework agnostic.
@@ -71,9 +80,22 @@ export type Filters = Record<string, string>;
 export const processData = <T extends object>(
     data: T[],
     filters: Filters,
-    sortState?: SortState
+    sortState?: SortState,
+    columns: ColumnDef[] = []
 ): T[] => {
-    let result = [...data];
+    // 0. Pre-process formulas
+    const hasFormulas = columns.some(c => !!c.formula);
+    let result = data.map(item => {
+        if (!hasFormulas) return { ...item };
+
+        const newItem = { ...item } as any;
+        columns.forEach(col => {
+            if (col.formula) {
+                newItem[col.key] = evaluateFormula(col.formula, newItem);
+            }
+        });
+        return newItem as T;
+    });
 
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {
@@ -99,12 +121,6 @@ export const processData = <T extends object>(
 
     return result;
 };
-
-export interface ColumnDef {
-    key: string;
-    width?: number;
-    fixed?: 'left' | 'right';
-}
 
 /**
  * Calculates sticky offsets for pinned columns.

@@ -12,6 +12,8 @@ interface CellProps<T> {
     showColumnBorders?: boolean;
 }
 
+import { isImageResult } from '../core/formulas';
+
 const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, showColumnBorders }: CellProps<T>) => {
     const value = (record as any)[column.key];
     const [isEditing, setIsEditing] = useState(false);
@@ -61,6 +63,26 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
         }
     };
 
+    const renderValue = () => {
+        if (column.render) return column.render(value, record, index);
+
+        if (isImageResult(value)) {
+            return (
+                <img
+                    src={value.url}
+                    alt={value.alt || ''}
+                    style={{
+                        maxWidth: value.width || '100%',
+                        maxHeight: value.height || '100%',
+                        objectFit: 'contain'
+                    }}
+                />
+            );
+        }
+
+        return String(value ?? '');
+    };
+
     return (
         <td
             onDoubleClick={handleDoubleClick}
@@ -93,7 +115,7 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
                     }}
                 />
             ) : (
-                column.render ? column.render(value, record, index) : value
+                renderValue()
             )}
         </td>
     );

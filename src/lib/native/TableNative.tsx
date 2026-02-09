@@ -6,10 +6,12 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
+    Image,
 } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import type { TableSettings, RowSettings, TableSortState, TableFilters, Column } from '../types';
 import { processData, calculateColumnOffsets } from '../core/engine';
+import { isImageResult } from '../core/formulas';
 
 export interface NativeTableProps<T> {
     data: T[];
@@ -52,8 +54,8 @@ export const TableNative = <T extends object>({
     }, [filters, onFilter]);
 
     const processedData = useMemo(() => {
-        return processData(data, filters, sortState);
-    }, [data, filters, sortState]);
+        return processData(data, filters, sortState, columns as any);
+    }, [data, filters, sortState, columns]);
 
     const { leftOffsets, rightOffsets } = useMemo(() =>
         calculateColumnOffsets(columns),
@@ -112,6 +114,25 @@ export const TableNative = <T extends object>({
                     backgroundColor: (theme?.cell as any)?.backgroundColor || '#fff',
                 } : {};
 
+                const renderCellContent = () => {
+                    if (col.render) return col.render(value, item, index) as any;
+
+                    if (isImageResult(value)) {
+                        return (
+                            <Image
+                                source={{ uri: value.url }}
+                                style={{
+                                    width: value.width || '100%',
+                                    height: value.height || '100%',
+                                    resizeMode: 'contain'
+                                }}
+                            />
+                        );
+                    }
+
+                    return <Text style={[styles.cellText, theme?.cell as any]}>{String(value ?? '')}</Text>;
+                };
+
                 return (
                     <View
                         key={col.key || colIndex}
@@ -122,11 +143,7 @@ export const TableNative = <T extends object>({
                             stickyStyle
                         ]}
                     >
-                        {col.render ? (
-                            col.render(value, item, index) as any
-                        ) : (
-                            <Text style={[styles.cellText, theme?.cell as any]}>{String(value)}</Text>
-                        )}
+                        {renderCellContent()}
                     </View>
                 );
             })}

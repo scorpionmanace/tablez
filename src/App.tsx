@@ -77,6 +77,20 @@ const columns: Column<User>[] = [
       </span>
     ),
   },
+  {
+    key: 'avatar',
+    title: 'Avatar',
+    width: 80,
+    formula: "=IMG('https://api.dicebear.com/7.x/avataaars/svg?seed=' + {name}, {name}, 32, 32)",
+    align: 'center' as const,
+  },
+  {
+    key: 'performance',
+    title: 'Performance',
+    width: 150,
+    formula: "=LOWER(CONCAT('Score: ', ROUND({id} * 1.5, 1)))",
+    sortable: true,
+  }
 ];
 
 // --- Custom Theme (BYOT) ---

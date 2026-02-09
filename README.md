@@ -139,6 +139,44 @@ import { TableNative } from '@scorpionmanace/tablez/native';
 ```
 
 
+
+## 🧮 Excel-like Formula Support
+
+Tablez includes a framework-agnostic Formula Engine. You can define dynamic calculations directly in your column definitions using Excel-like syntax.
+
+### Key Capabilities:
+- **Field References**: Use `{fieldKey}` to reference other data in the same row.
+- **Built-in Functions**:
+  - **Logic**: `IF`, `AND`, `OR`, `NOT`
+  - **Math**: `SUM`, `AVG`, `MIN`, `MAX`, `ROUND`, `ABS`
+  - **String**: `CONCAT`, `UPPER`, `LOWER`, `LEN`
+  - **Media**: `IMG(url, alt, width, height)`
+
+### Example usage:
+
+```tsx
+const columns = [
+  { key: 'price', title: 'Price', width: 100 },
+  { key: 'qty', title: 'Quantity', width: 100 },
+  { 
+    key: 'total', 
+    title: 'Total', 
+    formula: '={price} * {qty}',
+    sortable: true 
+  },
+  {
+    key: 'avatar',
+    title: 'Profile',
+    formula: "=IMG('https://avatar.io/' + {username}, {username}, 40, 40)"
+  },
+  {
+    key: 'status_label',
+    title: 'Status',
+    formula: "=IF({active}, '✅ Online', '❌ Offline')"
+  }
+];
+```
+
 ---
 
 ## 🎨 Bring Your Own Theme (BYOT)
@@ -267,6 +305,7 @@ The API was reorganized in v0.0.5 to support multi-framework usage and better re
 | `width` | `number` | Width in pixels |
 | `align` | `'left' \| 'center' \| 'right'` | Text alignment |
 | `render` | `function` | Custom cell rendering function |
+| `formula` | `string` | Excel-like calculation (starts with `=`) |
 
 ---
 

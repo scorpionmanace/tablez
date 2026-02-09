@@ -71,7 +71,7 @@ export class TablezEngine<T extends object> {
     }
 
     private refreshData() {
-        this.processedData = processData(this.options.data, this.filters, this.sortState);
+        this.processedData = processData(this.options.data, this.filters, this.sortState, this.options.columns);
         this.emitUpdate();
     }
 

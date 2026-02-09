@@ -169,8 +169,8 @@ export const Table = <T extends object>({
 
     const processedData = useMemo(() => {
         if (mode === 'server') return data;
-        return processData(data, filters, sortState);
-    }, [data, mode, filters, sortState]);
+        return processData(data, filters, sortState, columns as any);
+    }, [data, mode, filters, sortState, columns]);
 
     const virtualization = useMemo(() => {
         return calculateVirtualization({
