@@ -164,7 +164,9 @@ function App() {
   const vanillaEngine = useMemo(() => new TablezEngine({
     data: allData.slice(0, 100),
     columns: columns as any,
-    containerHeight: 300,
+    settings: {
+      containerHeight: 300,
+    },
     onUpdate: (state) => setVanillaState(state)
   }), [allData]);
 
@@ -303,7 +305,7 @@ function App() {
               <pre style={{ color: '#0369a1', marginTop: 15 }}>
                 {JSON.stringify(calculateVirtualization({
                   scrollTop: 10000,
-                  rowHeight: 40,
+                  height: 40,
                   containerHeight: 600,
                   dataLength: 1000000,
                   overscan: 5

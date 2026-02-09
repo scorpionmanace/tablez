@@ -8,30 +8,39 @@ import {
     ScrollView,
 } from 'react-native';
 import type { ViewStyle } from 'react-native';
-import type { Column, TableSortState, TableFilters, TableTheme } from '../types';
+import type { TableSettings, RowSettings, TableSortState, TableFilters, Column } from '../types';
 import { processData, calculateColumnOffsets } from '../core/engine';
 
 export interface NativeTableProps<T> {
     data: T[];
     columns: Column<T>[];
-    theme?: TableTheme;
-    containerStyle?: ViewStyle;
-    rowHeight?: number;
+
+    // Grouped settings
+    settings?: TableSettings;
+    rowSettings?: RowSettings<T>;
+
+    // Callbacks
     onSort?: (sortState: TableSortState) => void;
     onFilter?: (filters: TableFilters) => void;
-    loading?: boolean;
 }
 
 export const TableNative = <T extends object>({
     data,
     columns,
-    theme,
-    containerStyle,
-    rowHeight = 50,
+    settings = {},
+    rowSettings = {},
     onSort,
     onFilter,
-    loading,
 }: NativeTableProps<T>) => {
+    const {
+        loading = false,
+        theme,
+        containerStyle
+    } = settings;
+
+    const {
+        height: rowHeight = 50,
+    } = rowSettings;
     const [sortState, setSortState] = useState<TableSortState | undefined>();
     const filters: TableFilters = {}; // Keep as placeholder for now
 

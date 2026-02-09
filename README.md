@@ -59,6 +59,13 @@ import { TablezEngine } from '@scorpionmanace/tablez';
 const engine = new TablezEngine({
   data: myData,
   columns: myColumns,
+  settings: {
+    containerHeight: 500,
+    virtualized: true
+  },
+  rowSettings: {
+    height: 50
+  },
   onUpdate: (state) => {
     // Render your UI using state.visibleData, state.offsetY, etc.
     renderMyTable(state);
@@ -77,7 +84,7 @@ import { calculateVirtualization } from '@scorpionmanace/tablez';
 const scrollTop = ref(0);
 const virtualization = computed(() => calculateVirtualization({
   scrollTop: scrollTop.value,
-  rowHeight: 50,
+  height: 50,
   containerHeight: 500,
   dataLength: myData.length
 }));
@@ -91,7 +98,7 @@ import { calculateVirtualization } from '@scorpionmanace/tablez';
 const scrollTop = writable(0);
 const virtualization = derived(scrollTop, ($top) => calculateVirtualization({
   scrollTop: $top,
-  rowHeight: 50,
+  height: 50,
   containerHeight: 500,
   dataLength: myData.length
 }));
@@ -105,7 +112,7 @@ import { calculateVirtualization } from '@scorpionmanace/tablez';
 const scrollTop = signal(0);
 const virtualization = computed(() => calculateVirtualization({
   scrollTop: scrollTop(),
-  rowHeight: 50,
+  height: 50,
   containerHeight: 500,
   dataLength: myData.data.length
 }));
@@ -124,7 +131,9 @@ import { TableNative } from '@scorpionmanace/tablez/native';
     { key: 'name', title: 'Name', width: 200, sortable: true },
     { key: 'status', title: 'Status', width: 100 }
   ]}
-  rowHeight={60}
+  rowSettings={{
+    height: 60
+  }}
   onSort={(state) => console.log(state)}
 />
 ```

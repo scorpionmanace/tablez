@@ -49,6 +49,8 @@ export interface TableTheme {
     editInput?: CSSProperties;
 }
 
+import type { BaseTableSettings, BaseRowSettings } from './core/engine';
+
 export type TableSortDirection = 'asc' | 'desc' | null;
 
 export interface TableSortState {
@@ -58,22 +60,17 @@ export interface TableSortState {
 
 export type TableFilters = Record<string, string>;
 
-export interface TableSettings {
-    virtualized?: boolean;
-    containerHeight?: number;
-    mode?: 'client' | 'server';
-    loading?: boolean;
+export interface TableSettings extends BaseTableSettings {
     showColumnBorders?: boolean;
     resizable?: boolean; // Global enable
     className?: string;
     style?: CSSProperties;
+    containerStyle?: any; // For React Native
     theme?: TableTheme;
 }
 
-export interface RowSettings<T> {
+export interface RowSettings<T> extends BaseRowSettings {
     key?: string | ((record: T) => string);
-    height?: number;
-    overscan?: number;
     className?: string | ((record: T, index: number) => string);
     onClick?: (record: T) => void;
 }

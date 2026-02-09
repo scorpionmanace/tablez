@@ -1,10 +1,18 @@
-export interface VirtualizationParams {
-    scrollTop: number;
-    rowHeight: number;
-    containerHeight: number;
-    dataLength: number;
-    overscan?: number;
+export interface BaseTableSettings {
     virtualized?: boolean;
+    containerHeight?: number;
+    mode?: 'client' | 'server';
+    loading?: boolean;
+}
+
+export interface BaseRowSettings {
+    height?: number;
+    overscan?: number;
+}
+
+export interface VirtualizationParams extends BaseTableSettings, BaseRowSettings {
+    scrollTop: number;
+    dataLength: number;
 }
 
 export interface VirtualizationResult {
@@ -15,18 +23,15 @@ export interface VirtualizationResult {
     totalHeight: number;
 }
 
-/**
- * Calculates virtualization offsets and indices.
- */
 export const calculateVirtualization = ({
     scrollTop,
-    rowHeight,
-    containerHeight,
+    height = 50,
+    containerHeight = 500,
     dataLength,
     overscan = 3,
     virtualized = true,
 }: VirtualizationParams): VirtualizationResult => {
-    const totalHeight = dataLength * rowHeight;
+    const totalHeight = dataLength * height;
 
     if (!virtualized) {
         return {
@@ -37,17 +42,17 @@ export const calculateVirtualization = ({
             totalHeight,
         };
     }
-    const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
+    const startIndex = Math.max(0, Math.floor(scrollTop / height) - overscan);
     const endIndex = Math.min(
         dataLength,
-        Math.ceil((scrollTop + containerHeight) / rowHeight) + overscan
+        Math.ceil((scrollTop + containerHeight) / height) + overscan
     );
 
     return {
         startIndex,
         endIndex,
-        offsetY: startIndex * rowHeight,
-        bottomOffsetY: Math.max(0, totalHeight - (endIndex * rowHeight)),
+        offsetY: startIndex * height,
+        bottomOffsetY: Math.max(0, totalHeight - (endIndex * height)),
         totalHeight,
     };
 };

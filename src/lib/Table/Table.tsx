@@ -175,7 +175,7 @@ export const Table = <T extends object>({
     const virtualization = useMemo(() => {
         return calculateVirtualization({
             scrollTop,
-            rowHeight,
+            height: rowHeight,
             containerHeight,
             dataLength: processedData.length,
             overscan,

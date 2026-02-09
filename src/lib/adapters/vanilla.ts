@@ -4,16 +4,16 @@ import {
     calculateColumnOffsets,
     type SortState,
     type Filters,
-    type ColumnDef
+    type ColumnDef,
+    type BaseTableSettings,
+    type BaseRowSettings
 } from '../core/engine';
 
 export interface TablezOptions<T> {
     data: T[];
     columns: ColumnDef[];
-    rowHeight?: number;
-    containerHeight?: number;
-    overscan?: number;
-    virtualized?: boolean;
+    settings?: BaseTableSettings;
+    rowSettings?: BaseRowSettings;
     onUpdate?: (state: TablezState<T>) => void;
 }
 
@@ -40,11 +40,17 @@ export class TablezEngine<T extends object> {
 
     constructor(options: TablezOptions<T>) {
         this.options = {
-            rowHeight: 50,
-            containerHeight: 500,
-            overscan: 3,
-            virtualized: true,
-            ...options
+            ...options,
+            settings: {
+                virtualized: true,
+                containerHeight: 500,
+                ...options.settings
+            },
+            rowSettings: {
+                height: 50,
+                overscan: 3,
+                ...options.rowSettings
+            }
         };
         this.refreshData();
     }
@@ -74,11 +80,9 @@ export class TablezEngine<T extends object> {
 
         const virt = calculateVirtualization({
             scrollTop: this.scrollTop,
-            rowHeight: this.options.rowHeight!,
-            containerHeight: this.options.containerHeight!,
             dataLength: this.processedData.length,
-            overscan: this.options.overscan,
-            virtualized: this.options.virtualized
+            ...this.options.settings,
+            ...this.options.rowSettings
         });
 
         const columnOffsets = calculateColumnOffsets(this.options.columns);
