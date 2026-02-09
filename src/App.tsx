@@ -332,7 +332,17 @@ function App() {
                 items: [
                   'insertRowAbove', 'insertRowBelow', { type: 'separator' },
                   'insertColumnLeft', 'insertColumnRight', { type: 'separator' },
-                  'copy', 'cut', 'paste', { type: 'separator' },
+                  {
+                    label: 'Copy',
+                    icon: 'copy',
+                    children: [
+                      'copy',
+                      { type: 'separator' },
+                      'copyTableWithHeader',
+                      'copyTableWithoutHeader'
+                    ]
+                  },
+                  'cut', 'paste', { type: 'separator' },
                   'undo', 'redo', { type: 'separator' },
                   'hideRow', 'hideColumn', 'renameColumn',
                 ]

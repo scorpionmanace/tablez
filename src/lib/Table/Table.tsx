@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { TableProps, TableTheme, Column, TableSortState, TableFilters, TableSortDirection, ContextMenuItem, ContextMenuDefaultOption } from '../types';
 import { Header } from '../Header/Header';
 import { Row } from './Row';
-import { ContextMenu } from './ContextMenu';
+import { ContextMenu, DEFAULT_SHORTCUTS } from './ContextMenu';
 import { defaultTheme } from '../Theme/theme';
 import { calculateVirtualization, processData } from '../core/engine';
 
@@ -391,6 +391,36 @@ export const Table = <T extends object>({
                     setEditingHeaderKey(newKey);
                 }
             }
+        } else if (action === 'copyTableWithHeader' || action === 'copyTableWithoutHeader') {
+            const includeHeader = action === 'copyTableWithHeader';
+            const rows: string[][] = [];
+
+            if (includeHeader) {
+                rows.push(columns.map(c => {
+                    if (typeof c.title === 'string' || typeof c.title === 'number') return String(c.title);
+                    // Minimal ReactNode to string fallback - in a real app we might want a recursive text extractor
+                    return c.key;
+                }));
+            }
+
+            data.forEach(item => {
+                rows.push(columns.map(col => {
+                    let val = col.formula ? col.formula : (item as any)[col.key];
+                    if (val === null || val === undefined) return '';
+
+                    const s = String(val);
+                    // Basic TSV escaping: if it contains tab, newline, or quotes, wrap in quotes and escape internal quotes
+                    if (s.includes('\t') || s.includes('\n') || s.includes('"')) {
+                        return `"${s.replace(/"/g, '""')}"`;
+                    }
+                    return s;
+                }));
+            });
+
+            const tsv = rows.map(row => row.join('\t')).join('\n');
+            navigator.clipboard.writeText(tsv).catch(err => {
+                console.error('Failed to copy table: ', err);
+            });
         }
     }, [columns, data, onColumnUpdate, onDataChange, rowKey, history, historyIndex, updateDataWithHistory, onCellEdit]);
 
@@ -401,14 +431,6 @@ export const Table = <T extends object>({
             action.onClick(record, column);
         }
     }, [onContextMenuAction]);
-
-    const DEFAULT_SHORTCUTS: Record<string, string> = {
-        'undo': 'Mod+Z',
-        'redo': 'Mod+Y',
-        'copy': 'Mod+C',
-        'cut': 'Mod+X',
-        'paste': 'Mod+V'
-    };
 
     // Keyboard Shortcuts
     const mergedItems = useMemo(() => {

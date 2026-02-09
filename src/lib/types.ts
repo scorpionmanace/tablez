@@ -98,7 +98,7 @@ export interface TableSettings extends BaseTableSettings {
     };
 }
 
-export type ContextMenuDefaultOption = 'hideRow' | 'hideColumn' | 'insertRowBelow' | 'insertRowAbove' | 'insertColumnLeft' | 'insertColumnRight' | 'renameColumn' | 'undo' | 'redo' | 'copy' | 'cut' | 'paste' | 'pasteSpecial';
+export type ContextMenuDefaultOption = 'hideRow' | 'hideColumn' | 'insertRowBelow' | 'insertRowAbove' | 'insertColumnLeft' | 'insertColumnRight' | 'renameColumn' | 'undo' | 'redo' | 'copy' | 'cut' | 'paste' | 'pasteSpecial' | 'copyTableWithHeader' | 'copyTableWithoutHeader';
 
 export interface ContextMenuItem {
     label?: string;
