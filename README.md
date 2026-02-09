@@ -221,6 +221,8 @@ const midnightTheme = {
 | `padding` | Global cell padding |
 | `borderRadius` | Corner radius for inputs and menus |
 | `fontFamily` | Font stack |
+| `readOnlyColor` | Text color for read-only cells (usually muted) |
+| `disabledColor` | Background or text hint for disabled state |
 
 ### Component Overrides (Advanced)
 For surgery-grade customization, you can override specific CSS properties for any part of the table. Component overrides take precedence over tokens.
@@ -291,6 +293,8 @@ The API was reorganized in v0.0.5 to support multi-framework usage and better re
 | `overscan` | `number` | `3` | Rows to render outside viewport |
 | `className` | `string \| (r: T, i: n) => string` | `undefined` | Custom row CSS class |
 | `onClick` | `(record: T) => void` | `undefined` | Row click handler |
+| `readOnly` | `boolean \| (r: T) => boolean` | `false` | Make entire row read-only |
+| `disabled` | `boolean \| (r: T) => boolean` | `false` | Disable entire row |
 
 ### `Column` Properties
 
@@ -306,6 +310,8 @@ The API was reorganized in v0.0.5 to support multi-framework usage and better re
 | `align` | `'left' \| 'center' \| 'right'` | Text alignment |
 | `render` | `function` | Custom cell rendering function |
 | `formula` | `string` | Excel-like calculation (starts with `=`) |
+| `readOnly` | `boolean \| (record: T) => boolean` | Make column/cells read-only |
+| `disabled` | `boolean \| (record: T) => boolean` | Disable column/cells |
 
 ---
 
@@ -332,6 +338,22 @@ const columns = [{
   render: (record) => <UserBadge user={record} />
 }];
 ```
+
+### Read-only & Disabled States
+Tablez provides granular control over cell interactivity:
+- **Read-only**: Cells show a 🔒 icon in the top-right corner. Both **Copy** and **Cut** actions are prevented to protect sensitive data.
+- **Disabled**: Cells are greyed out with `opacity: 0.6`. All modifications (edit, cut) and click events are blocked, but **Copy** is still permitted.
+
+Both states can be applied to a **Column**, an entire **Row**, or dynamically based on the **Record**.
+
+### Context Menu & Shortcuts
+The built-in context menu supports advanced actions and keyboard shortcuts:
+- **Copy Sub-menu**:
+    - `Copy Cell`: Copies the current cell value.
+    - `Copy Table (with Headers)`: Exports the entire table as TSV with headers.
+    - `Copy Table (no Headers)`: Exports the table data only.
+- **Formula Persistence**: When copying, the raw formula string is preserved instead of the calculated value.
+- **Shortcuts**: Common actions have macOS-aware shortcuts (e.g., `⌘C`, `⌘V`, `⌘Z`).
 
 ## 🧪 Testing
 
