@@ -88,6 +88,7 @@ function App() {
   const [mode, setMode] = useState<'client' | 'server'>('client');
   const [loading, setLoading] = useState(false);
   const [serverData, setServerData] = useState<User[]>([]);
+  const [showBorders, setShowBorders] = useState(true);
 
   // Base dataset state
   const [allData, setAllData] = useState<User[]>(() => {
@@ -170,6 +171,9 @@ function App() {
         <button onClick={() => setResizable(!resizable)}>
           Resizing: {resizable ? 'ON' : 'OFF'}
         </button>
+        <button onClick={() => setShowBorders(!showBorders)}>
+          Separators: {showBorders ? 'ON' : 'OFF'}
+        </button>
       </div>
 
       <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
@@ -200,6 +204,7 @@ function App() {
           onFilter={mode === 'server' ? handleServerFilter : undefined}
           onCellEdit={handleCellEdit}
           rowClassName={getRowClassName}
+          showColumnBorders={showBorders}
           containerHeight={400}
         />
       </div>

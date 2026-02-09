@@ -12,9 +12,10 @@ interface RowProps<T> {
     style?: CSSProperties;
     index: number;
     className?: string | ((record: T, index: number) => string);
+    showColumnBorders?: boolean;
 }
 
-const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, index, className }: RowProps<T>) => {
+const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, index, className, showColumnBorders }: RowProps<T>) => {
     const rowClassName = typeof className === 'function' ? className(record, index) : className;
 
     // Calculate sticky offsets
@@ -65,6 +66,7 @@ const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, inde
                         index={idx}
                         onEdit={onCellEdit}
                         stickyStyles={stickyStyles}
+                        showColumnBorders={showColumnBorders}
                     />
                 );
             })}

@@ -9,9 +9,10 @@ interface CellProps<T> {
     index: number;
     onEdit?: (record: T, key: string, value: any) => void;
     stickyStyles?: CSSProperties;
+    showColumnBorders?: boolean;
 }
 
-const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles }: CellProps<T>) => {
+const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, showColumnBorders }: CellProps<T>) => {
     const value = (record as any)[column.key];
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
@@ -68,6 +69,7 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles }: C
                 ...theme.cell,
                 ...column.style,
                 ...stickyStyles,
+                borderRight: showColumnBorders ? '1px solid #e2e8f0' : 'none',
                 textAlign: column.align,
                 position: isEditing ? 'relative' : (stickyStyles?.position as any || 'relative'),
                 minHeight: '20px',

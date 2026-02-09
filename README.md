@@ -75,6 +75,7 @@ Tablez supports theming. You can use the built-in `defaultTheme` or `darkTheme`,
 | `onFilter` | `(filters: TableFilters) => void` | Server-mode filter callback |
 | `onCellEdit` | `(record: T, key: string, value: any) => void` | Callback when a cell is edited |
 | `rowClassName` | `string \| (record: T, index: number) => string` | Custom CSS class for rows |
+| `showColumnBorders`| `boolean` | Toggle vertical column separators (default: `true`) |
 | `components` | `object` | Override Row, Cell, or Header components |
 
 ### `Column` Properties

@@ -24,6 +24,7 @@ export const Table = <T extends object>({
     onFilter,
     onCellEdit,
     rowClassName,
+    showColumnBorders = true,
     onColumnUpdate,
     components = {},
 }: TableProps<T>) => {
@@ -167,6 +168,7 @@ export const Table = <T extends object>({
                 onFreeze={handleFreeze}
                 sortState={sortState}
                 filters={filters}
+                showColumnBorders={showColumnBorders}
             />
             {virtualized ? (
                 <tbody style={{ height: totalHeight, position: 'relative' }}>
@@ -189,6 +191,7 @@ export const Table = <T extends object>({
                                 onCellEdit={onCellEdit}
                                 index={originalIndex}
                                 className={rowClassName}
+                                showColumnBorders={showColumnBorders}
                             />
                         );
                     })}
@@ -212,6 +215,7 @@ export const Table = <T extends object>({
                                 onCellEdit={onCellEdit}
                                 index={index}
                                 className={rowClassName}
+                                showColumnBorders={showColumnBorders}
                             />
                         );
                     })}

@@ -13,6 +13,7 @@ interface HeaderProps {
     onFreeze?: (key: string, direction: 'left' | 'right' | null) => void;
     sortState?: TableSortState;
     filters?: TableFilters;
+    showColumnBorders?: boolean;
 }
 
 export const Header: FC<HeaderProps> = ({
@@ -24,7 +25,8 @@ export const Header: FC<HeaderProps> = ({
     onFilter,
     onFreeze,
     sortState,
-    filters = {}
+    filters = {},
+    showColumnBorders = true,
 }) => {
     const [resizingIndex, setResizingIndex] = useState<number | null>(null);
     const [startX, setStartX] = useState(0);
@@ -111,6 +113,7 @@ export const Header: FC<HeaderProps> = ({
                                 ...theme.headerCell,
                                 ...col.headerStyle,
                                 ...stickyStyles,
+                                borderRight: showColumnBorders ? '1px solid #e2e8f0' : 'none',
                                 width: col.width,
                                 textAlign: col.align,
                                 userSelect: 'none', // Prevent text selection while resizing

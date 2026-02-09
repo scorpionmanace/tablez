@@ -68,6 +68,7 @@ export interface TableProps<T> {
 
     // Customization
     rowClassName?: string | ((record: T, index: number) => string);
+    showColumnBorders?: boolean;
     components?: {
         Row?: React.ComponentType<any>;
         Cell?: React.ComponentType<any>;
