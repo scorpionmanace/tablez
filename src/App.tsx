@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Table, darkTheme } from './lib';
 import type { Column, TableSortState, TableFilters } from './lib';
 import './App.css';
@@ -12,8 +12,8 @@ interface User {
 
 const columns: Column<User>[] = [
   { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
-  { key: 'name', title: 'Name', sortable: true, filterable: true },
-  { key: 'role', title: 'Role', sortable: true, filterable: true },
+  { key: 'name', title: 'Name', sortable: true, filterable: true, editable: true },
+  { key: 'role', title: 'Role', sortable: true, filterable: true, editable: (record) => record.id !== 1 },
   {
     key: 'status',
     title: 'Status',
@@ -44,8 +44,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [serverData, setServerData] = useState<User[]>([]);
 
-  // Base dataset
-  const allData = useMemo(() => {
+  // Base dataset state
+  const [allData, setAllData] = useState<User[]>(() => {
     const roles = ['Admin', 'Editor', 'User', 'Viewer'];
     const statuses: ('active' | 'inactive')[] = ['active', 'inactive'];
 
@@ -55,7 +55,15 @@ function App() {
       role: roles[i % roles.length],
       status: statuses[i % statuses.length],
     }));
-  }, []);
+  });
+
+  // Handle cell edit
+  const handleCellEdit = (record: User, key: string, value: any) => {
+    console.log('Cell edited:', { record, key, value });
+    setAllData(prev => prev.map(item =>
+      item.id === record.id ? { ...item, [key]: value } : item
+    ));
+  };
 
   // Initialize server data
   useEffect(() => {
@@ -116,6 +124,7 @@ function App() {
 
       <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
         <strong>Current Config:</strong> {mode === 'client' ? 'Client-side processing' : 'Server-side processing (simulated)'}
+        <span style={{ marginLeft: 15, color: '#3b82f6' }}>💡 Double-click cells in Name or Role to edit!</span>
       </div>
 
       <div style={{ border: '1px solid #ccc', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
@@ -130,6 +139,7 @@ function App() {
           loading={loading}
           onSort={mode === 'server' ? handleServerSort : undefined}
           onFilter={mode === 'server' ? handleServerFilter : undefined}
+          onCellEdit={handleCellEdit}
           containerHeight={400}
         />
       </div>

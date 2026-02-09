@@ -10,6 +10,7 @@ export interface Column<T = any> {
     sortable?: boolean;
     filterable?: boolean;
     searchType?: 'text' | 'number';
+    editable?: boolean | ((record: T) => boolean);
 }
 
 export interface TableTheme {
@@ -22,6 +23,7 @@ export interface TableTheme {
     menu?: CSSProperties;
     menuItem?: CSSProperties;
     searchInput?: CSSProperties;
+    editInput?: CSSProperties;
 }
 
 export type TableSortDirection = 'asc' | 'desc' | null;
@@ -53,4 +55,7 @@ export interface TableProps<T> {
     loading?: boolean;
     onSort?: (sortState: TableSortState) => void;
     onFilter?: (filters: TableFilters) => void;
+
+    // Editing support
+    onCellEdit?: (record: T, key: string, value: any) => void;
 }

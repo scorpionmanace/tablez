@@ -22,6 +22,7 @@ export const Table = <T extends object>({
     loading = false,
     onSort,
     onFilter,
+    onCellEdit,
 }: TableProps<T>) => {
     const [columns, setColumns] = useState<Column<T>[]>(initialColumns);
     const [scrollTop, setScrollTop] = useState(0);
@@ -44,6 +45,7 @@ export const Table = <T extends object>({
             menu: { ...defaultTheme.menu, ...userTheme?.menu },
             menuItem: { ...defaultTheme.menuItem, ...userTheme?.menuItem },
             searchInput: { ...defaultTheme.searchInput, ...userTheme?.searchInput },
+            editInput: { ...defaultTheme.editInput, ...userTheme?.editInput },
         } as TableTheme;
     }, [userTheme]);
 
@@ -170,6 +172,7 @@ export const Table = <T extends object>({
                                 columns={columns}
                                 theme={theme}
                                 onClick={onRowClick}
+                                onCellEdit={onCellEdit}
                             />
                         );
                     })}
@@ -190,6 +193,7 @@ export const Table = <T extends object>({
                                 columns={columns}
                                 theme={theme}
                                 onClick={onRowClick}
+                                onCellEdit={onCellEdit}
                             />
                         );
                     })}

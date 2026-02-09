@@ -73,6 +73,7 @@ Tablez supports theming. You can use the built-in `defaultTheme` or `darkTheme`,
 | `virtualized` | `boolean` | Enable virtual scrolling (default: `false`) |
 | `onSort` | `(state: TableSortState) => void` | Server-mode sort callback |
 | `onFilter` | `(filters: TableFilters) => void` | Server-mode filter callback |
+| `onCellEdit` | `(record: T, key: string, value: any) => void` | Callback when a cell is edited |
 
 ### `Column` Properties
 
@@ -82,8 +83,32 @@ Tablez supports theming. You can use the built-in `defaultTheme` or `darkTheme`,
 | `title` | `ReactNode` | Column header title |
 | `sortable` | `boolean` | Enable sorting for this column |
 | `filterable` | `boolean` | Enable search filter for this column |
+| `editable` | `boolean \| (record: T) => boolean` | Enable cell editing |
 | `width` | `number` | Width in pixels |
 | `align` | `'left' \| 'center' \| 'right'` | Text alignment |
+
+## ✍️ Cell Editing
+
+Enable editing per column. Double-click to enter edit mode.
+
+```tsx
+const columns = [
+  { 
+    key: 'name', 
+    title: 'Name', 
+    editable: true // or (record) => record.status !== 'locked'
+  }
+];
+
+<Table
+  data={data}
+  columns={columns}
+  onCellEdit={(record, key, newValue) => {
+    // Update your state here
+    updateMyData(record.id, key, newValue);
+  }}
+/>
+```
 
 ## 🧪 Testing
 
