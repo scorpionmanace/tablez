@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import type { Column, TableTheme } from '../types';
 import { Cell } from './Cell';
+import { calculateColumnOffsets } from '../core/engine';
 
 interface RowProps<T> {
     record: T;
@@ -29,27 +30,9 @@ const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, inde
     }), [theme.row, style, height, onClick]);
 
     // Calculate sticky offsets
-    const leftOffsets = useMemo(() => {
-        let current = 0;
-        return columns.map(col => {
-            const offset = col.fixed === 'left' ? current : 0;
-            if (col.fixed === 'left') current += col.width || 100;
-            return offset;
-        });
-    }, [columns]);
-
-    const rightOffsets = useMemo(() => {
-        let current = 0;
-        const reversed = [...columns].reverse();
-        const offsetsMap: Record<string, number> = {};
-        reversed.forEach(col => {
-            if (col.fixed === 'right') {
-                offsetsMap[col.key] = current;
-                current += col.width || 100;
-            }
-        });
-        return offsetsMap;
-    }, [columns]);
+    const { leftOffsets, rightOffsets } = useMemo(() =>
+        calculateColumnOffsets(columns),
+        [columns]);
 
     return (
         <tr

@@ -3,6 +3,7 @@ import type { TableProps, TableTheme, Column, TableSortState, TableFilters, Tabl
 import { Header } from '../Header/Header';
 import { Row } from './Row';
 import { defaultTheme } from '../Theme/theme';
+import { calculateVirtualization, processData } from '../core/engine';
 
 export const Table = <T extends object>({
     data,
@@ -110,56 +111,24 @@ export const Table = <T extends object>({
 
     const processedData = useMemo(() => {
         if (mode === 'server') return data;
-
-        let result = [...data];
-
-        // Apply filters
-        Object.entries(filters).forEach(([key, value]) => {
-            if (!value) return;
-            result = result.filter(item => {
-                const itemValue = String((item as any)[key]).toLowerCase();
-                return itemValue.includes(value.toLowerCase());
-            });
-        });
-
-        // Apply sort
-        if (sortState?.direction) {
-            const { columnKey, direction } = sortState;
-            result.sort((a, b) => {
-                const valA = (a as any)[columnKey];
-                const valB = (b as any)[columnKey];
-
-                if (valA === valB) return 0;
-                const comparison = valA < valB ? -1 : 1;
-                return direction === 'asc' ? comparison : -comparison;
-            });
-        }
-
-        return result;
+        return processData(data, filters, sortState);
     }, [data, mode, filters, sortState]);
 
-    const { visibleData, offsetY, bottomOffsetY } = useMemo(() => {
-        if (!virtualized) {
-            return {
-                visibleData: processedData,
-                offsetY: 0,
-                bottomOffsetY: 0,
-            };
-        }
+    const virtualization = useMemo(() => {
+        return calculateVirtualization({
+            scrollTop,
+            rowHeight,
+            containerHeight,
+            dataLength: processedData.length,
+            overscan,
+            virtualized
+        });
+    }, [virtualized, processedData.length, rowHeight, scrollTop, containerHeight, overscan]);
 
-        const total = processedData.length * rowHeight;
-        const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
-        const endIndex = Math.min(
-            processedData.length,
-            Math.ceil((scrollTop + containerHeight) / rowHeight) + overscan
-        );
-
-        return {
-            visibleData: processedData.slice(startIndex, endIndex),
-            offsetY: startIndex * rowHeight,
-            bottomOffsetY: Math.max(0, total - (endIndex * rowHeight)),
-        };
-    }, [virtualized, processedData, rowHeight, scrollTop, containerHeight, overscan]);
+    const { startIndex, endIndex, offsetY, bottomOffsetY } = virtualization;
+    const visibleData = useMemo(() =>
+        processedData.slice(startIndex, endIndex),
+        [processedData, startIndex, endIndex]);
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
         if (scrollAnimationFrame.current) {
@@ -208,7 +177,7 @@ export const Table = <T extends object>({
                             <td colSpan={columns.length} style={{ padding: 0, border: 'none', height: offsetY }} />
                         </tr>
                     )}
-                    {visibleData.map((record, index) => {
+                    {visibleData.map((record: T, index: number) => {
                         const originalIndex = Math.floor(offsetY / rowHeight) + index;
                         const key = rowKey
                             ? typeof rowKey === 'function'
@@ -239,7 +208,7 @@ export const Table = <T extends object>({
                 </tbody>
             ) : (
                 <tbody>
-                    {processedData.map((record, index) => {
+                    {processedData.map((record: T, index: number) => {
                         const key = rowKey
                             ? typeof rowKey === 'function'
                                 ? rowKey(record)

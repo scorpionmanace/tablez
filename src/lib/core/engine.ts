@@ -1,0 +1,128 @@
+export interface VirtualizationParams {
+    scrollTop: number;
+    rowHeight: number;
+    containerHeight: number;
+    dataLength: number;
+    overscan?: number;
+    virtualized?: boolean;
+}
+
+export interface VirtualizationResult {
+    startIndex: number;
+    endIndex: number;
+    offsetY: number;
+    bottomOffsetY: number;
+    totalHeight: number;
+}
+
+/**
+ * Calculates virtualization offsets and indices.
+ */
+export const calculateVirtualization = ({
+    scrollTop,
+    rowHeight,
+    containerHeight,
+    dataLength,
+    overscan = 3,
+    virtualized = true,
+}: VirtualizationParams): VirtualizationResult => {
+    const totalHeight = dataLength * rowHeight;
+
+    if (!virtualized) {
+        return {
+            startIndex: 0,
+            endIndex: dataLength,
+            offsetY: 0,
+            bottomOffsetY: 0,
+            totalHeight,
+        };
+    }
+    const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
+    const endIndex = Math.min(
+        dataLength,
+        Math.ceil((scrollTop + containerHeight) / rowHeight) + overscan
+    );
+
+    return {
+        startIndex,
+        endIndex,
+        offsetY: startIndex * rowHeight,
+        bottomOffsetY: Math.max(0, totalHeight - (endIndex * rowHeight)),
+        totalHeight,
+    };
+};
+
+export interface SortState {
+    columnKey: string;
+    direction: 'asc' | 'desc' | null;
+}
+
+export type Filters = Record<string, string>;
+
+/**
+ * Processes data with sorting and filtering.
+ * Framework agnostic.
+ */
+export const processData = <T extends object>(
+    data: T[],
+    filters: Filters,
+    sortState?: SortState
+): T[] => {
+    let result = [...data];
+
+    // Apply filters
+    Object.entries(filters).forEach(([key, value]) => {
+        if (!value) return;
+        result = result.filter(item => {
+            const itemValue = String((item as any)[key]).toLowerCase();
+            return itemValue.includes(value.toLowerCase());
+        });
+    });
+
+    // Apply sort
+    if (sortState?.direction) {
+        const { columnKey, direction } = sortState;
+        result.sort((a, b) => {
+            const valA = (a as any)[columnKey];
+            const valB = (b as any)[columnKey];
+
+            if (valA === valB) return 0;
+            const comparison = valA < valB ? -1 : 1;
+            return direction === 'asc' ? comparison : -comparison;
+        });
+    }
+
+    return result;
+};
+
+export interface ColumnDef {
+    key: string;
+    width?: number;
+    fixed?: 'left' | 'right';
+}
+
+/**
+ * Calculates sticky offsets for pinned columns.
+ * Framework agnostic.
+ */
+export const calculateColumnOffsets = (columns: ColumnDef[]) => {
+    const leftOffsets: number[] = [];
+    let currentLeft = 0;
+
+    columns.forEach(col => {
+        leftOffsets.push(col.fixed === 'left' ? currentLeft : 0);
+        if (col.fixed === 'left') currentLeft += col.width || 100;
+    });
+
+    const rightOffsets: Record<string, number> = {};
+    let currentRight = 0;
+
+    [...columns].reverse().forEach(col => {
+        if (col.fixed === 'right') {
+            rightOffsets[col.key] = currentRight;
+            currentRight += col.width || 100;
+        }
+    });
+
+    return { leftOffsets, rightOffsets };
+};

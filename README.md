@@ -16,7 +16,7 @@ Features:
 npm install @scorpionmanace/tablez
 ```
 
-## 🚀 Quick Start
+## 🚀 Quick Start (React)
 
 ```tsx
 import { Table } from '@scorpionmanace/tablez';
@@ -31,52 +31,101 @@ function App() {
     <Table
       data={data}
       columns={columns}
-      mode="client" // or "server"
+      settings={{
+        mode: "client",
+        virtualized: true,
+        containerHeight: 500
+      }}
+      rowSettings={{
+        key: "id",
+        onClick: (record) => console.log("Clicked row", record)
+      }}
     />
   );
 }
 ```
 
-## 🌐 Client vs Server Side
+## 🚀 Headless / Multi-Framework Support
 
-### Client Side (Default)
-In client-side mode, Tablez handles all sorting and filtering logic internally.
+Tablez is built on a **Headless Engine**. All the logic (virtualization math, sorting, filtering) is framework-agnostic.
 
-### Server Side
-In server-side mode, the table triggers `onSort` and `onFilter` callbacks.
+### Vanilla JS / Generic Wrapper
+Use the `TablezEngine` class to manage state in any environment.
 
-```tsx
-<Table
-  data={serverData}
-  mode="server"
-  loading={isLoading}
-  onSort={(sortState) => fetchNewData(sortState)}
-  onFilter={(filters) => fetchNewData(filters)}
-/>
+```ts
+import { TablezEngine } from '@scorpionmanace/tablez';
+
+const engine = new TablezEngine({
+  data: myData,
+  columns: myColumns,
+  onUpdate: (state) => {
+    // Render your UI using state.visibleData, state.offsetY, etc.
+    renderMyTable(state);
+  }
+});
+
+// Sync scroll
+container.onscroll = (e) => engine.setScrollTop(e.target.scrollTop);
 ```
 
-## 🎨 Theming
+### Vue 3 (Composition API)
+You can easily build a Vue adapter using the provided engine utilities.
 
-Tablez supports theming. You can use the built-in `defaultTheme` or `darkTheme`, or provide your own.
+```ts
+import { ref, computed } from 'vue';
+import { calculateVirtualization, processData } from '@scorpionmanace/tablez';
+
+// In your setup():
+const scrollTop = ref(0);
+const virtualization = computed(() => calculateVirtualization({
+  scrollTop: scrollTop.value,
+  rowHeight: 50,
+  containerHeight: 500,
+  dataLength: myData.length
+}));
+```
+
+### React Native
+Since the core logic doesn't use the DOM, you can use it to drive a `FlatList` or custom scroll view in React Native for high-performance tables.
+
+---
 
 ## 📜 API
 
-### `Table` Props
+### `Table` Props (React)
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `data` | `T[]` | Array of data records to display |
-| `columns` | `Column<T>[]` | Column definitions |
-| `mode` | `'client' \| 'server'` | Data processing mode (default: `'client'`) |
-| `loading` | `boolean` | Show loading state (default: `false`) |
-| `resizable` | `boolean` | Enable column resizing (default: `true`) |
-| `virtualized` | `boolean` | Enable virtual scrolling (default: `false`) |
+| `data` | `T[]` (Required) | Array of data records to display |
+| `columns` | `Column<T>[]` (Required) | Column definitions |
+| `settings` | `TableSettings` | Table-wide configurations |
+| `rowSettings`| `RowSettings` | Row-specific configurations |
 | `onSort` | `(state: TableSortState) => void` | Server-mode sort callback |
 | `onFilter` | `(filters: TableFilters) => void` | Server-mode filter callback |
 | `onCellEdit` | `(record: T, key: string, value: any) => void` | Callback when a cell is edited |
-| `rowClassName` | `string \| (record: T, index: number) => string` | Custom CSS class for rows |
-| `showColumnBorders`| `boolean` | Toggle vertical column separators (default: `true`) |
-| `components` | `object` | Override Row, Cell, or Header components |
+| `components` | `TableComponents` | Override Row, Cell, or Header components |
+
+### `TableSettings`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `virtualized` | `boolean` | `false` | Enable virtual scrolling |
+| `containerHeight` | `number` | `500` | Height of the scroll container |
+| `mode` | `'client' \| 'server'` | `'client'` | Processing mode |
+| `loading` | `boolean` | `false` | Show loading state |
+| `showColumnBorders`| `boolean` | `true` | Show vertical separators |
+| `resizable` | `boolean` | `false` | Global resize enable |
+| `theme` | `TableTheme` | `defaultTheme` | Theme object |
+
+### `RowSettings`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `key` | `string \| (r: T) => string` | `undefined` | Unique row key |
+| `height` | `number` | `50` | Row height in pixels |
+| `overscan` | `number` | `3` | Rows to render outside viewport |
+| `className` | `string \| (r: T, i: n) => string` | `undefined` | Custom row CSS class |
+| `onClick` | `(record: T) => void` | `undefined` | Row click handler |
 
 ### `Column` Properties
 
@@ -84,61 +133,20 @@ Tablez supports theming. You can use the built-in `defaultTheme` or `darkTheme`,
 |----------|------|-------------|
 | `key` | `string` | Unique key for the column |
 | `title` | `ReactNode` | Column header title |
-| `render` | `function` | Custom cell rendering function |
-| `headerRender`| `function` | Custom header rendering function |
+| `fixed` | `'left' \| 'right'` | Pin column to side |
 | `sortable` | `boolean` | Enable sorting for this column |
 | `filterable` | `boolean` | Enable search filter for this column |
 | `editable` | `boolean \| (record: T) => boolean` | Enable cell editing |
 | `width` | `number` | Width in pixels |
 | `align` | `'left' \| 'center' \| 'right'` | Text alignment |
-| `className` | `string` | Custom CSS class for cells in this column |
-| `headerClassName`| `string` | Custom CSS class for header cell |
-| `style` | `CSSProperties` | Inline styles for cells |
-| `headerStyle` | `CSSProperties` | Inline styles for header |
+| `render` | `function` | Custom cell rendering function |
 
-## 🎨 Advanced Customization
+---
 
-### Custom Header/Cell JSX
-You can inject any JSX into headers and cells.
+## ❄ Features
 
-```tsx
-const columns = [
-  {
-    key: 'user',
-    title: 'User',
-    headerRender: () => <span><UserIcon /> Name</span>,
-    render: (val) => <strong><val.name></strong>
-  }
-];
-```
-
-### Row Styling
-Zebra striping or conditional row coloring:
-
-```tsx
-<Table
-  rowClassName={(record, index) => index % 2 === 0 ? 'even' : 'odd'}
-  ...
-/>
-```
-
-### Component Overrides
-For complete control, you can swap out internal components:
-
-```tsx
-<Table
-  components={{
-    Row: MyCustomRow,
-    Cell: MyCustomCell
-  }}
-  ...
-/>
-```
-
-## ❄ Column & Row Freezing
-
-### Freeze Columns
-Pin columns to the left or right side of the table using the `fixed` property. Users can also freeze/unfreeze columns via the column menu in the header.
+### Column Freezing
+Pin columns to the left or right side. Users can also freeze/unfreeze via the column menu.
 
 ```tsx
 const columns = [
@@ -147,30 +155,16 @@ const columns = [
 ];
 ```
 
-### Frozen Header
-The header is automatically pinned to the top of the table. Ensure your scroll container has a height defined (via `containerHeight` or CSS).
+### Virtualization
+Optimized for 100,000+ rows using a headless math engine and throttled rendering.
 
-## ✍️ Cell Editing
-
-Enable editing per column. Double-click to enter edit mode.
-
+### Custom Rendering
 ```tsx
-const columns = [
-  { 
-    key: 'name', 
-    title: 'Name', 
-    editable: true // or (record) => record.status !== 'locked'
-  }
-];
-
-<Table
-  data={data}
-  columns={columns}
-  onCellEdit={(record, key, newValue) => {
-    // Update your state here
-    updateMyData(record.id, key, newValue);
-  }}
-/>
+const columns = [{
+  key: 'user',
+  title: 'User',
+  render: (record) => <UserBadge user={record} />
+}];
 ```
 
 ## 🧪 Testing
