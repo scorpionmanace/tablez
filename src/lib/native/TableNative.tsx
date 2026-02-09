@@ -9,7 +9,7 @@ import {
     Image,
 } from 'react-native';
 import type { ViewStyle } from 'react-native';
-import type { TableSettings, RowSettings, TableSortState, TableFilters, Column } from '../types';
+import type { TableSettings, RowSettings, TableSortState, TableFilters, Column, TableSortDirection } from '../types';
 import { processData, calculateColumnOffsets } from '../core/engine';
 import { isImageResult } from '../core/formulas';
 
@@ -24,6 +24,10 @@ export interface NativeTableProps<T> {
     // Callbacks
     onSort?: (sortState: TableSortState) => void;
     onFilter?: (filters: TableFilters) => void;
+
+    // State
+    sortState?: TableSortState;
+    filters?: TableFilters;
 }
 
 export const TableNative = <T extends object>({
@@ -33,6 +37,8 @@ export const TableNative = <T extends object>({
     rowSettings = {},
     onSort,
     onFilter,
+    sortState: propSortState,
+    filters: propFilters,
 }: NativeTableProps<T>) => {
     const {
         loading = false,
@@ -43,8 +49,11 @@ export const TableNative = <T extends object>({
     const {
         height: rowHeight = 50,
     } = rowSettings;
-    const [sortState, setSortState] = useState<TableSortState | undefined>();
-    const filters: TableFilters = {}; // Keep as placeholder for now
+    const [internalSortState, setInternalSortState] = useState<TableSortState | undefined>();
+    const [internalFilters] = useState<TableFilters>({});
+
+    const sortState = propSortState !== undefined ? propSortState : internalSortState;
+    const filters = propFilters !== undefined ? propFilters : internalFilters;
 
     // Notify parent on filter change (if UI were added)
     useMemo(() => {
@@ -78,9 +87,14 @@ export const TableNative = <T extends object>({
                         key={col.key || index}
                         onPress={() => {
                             if (col.sortable) {
-                                const nextDir = sortState?.columnKey === col.key && sortState.direction === 'asc' ? 'desc' : 'asc';
-                                const newState: TableSortState = { columnKey: col.key, direction: nextDir };
-                                setSortState(newState);
+                                const currentDirection = sortState?.columnKey === col.key ? sortState.direction : null;
+                                let nextDirection: TableSortDirection = 'asc';
+
+                                if (currentDirection === 'asc') nextDirection = 'desc';
+                                else if (currentDirection === 'desc') nextDirection = null;
+
+                                const newState: TableSortState = { columnKey: col.key, direction: nextDirection };
+                                setInternalSortState(newState);
                                 onSort?.(newState);
                             }
                         }}

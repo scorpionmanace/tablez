@@ -14,6 +14,8 @@ export const Table = <T extends object>({
     onFilter,
     onColumnUpdate,
     onCellEdit,
+    sortState: propSortState,
+    filters: propFilters,
     components = {},
 }: TableProps<T>) => {
     // Extract settings with defaults
@@ -44,9 +46,27 @@ export const Table = <T extends object>({
     const [columns, setColumns] = useState<Column<T>[]>(initialColumns);
     const [scrollTop, setScrollTop] = useState(0);
     const scrollAnimationFrame = useRef<number | null>(null);
-    const [sortState, setSortState] = useState<TableSortState | undefined>();
-    const [filters, setFilters] = useState<TableFilters>({});
+    const [internalSortState, setInternalSortState] = useState<TableSortState | undefined>();
+    const [internalFilters, setInternalFilters] = useState<TableFilters>({});
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Controlled vs Uncontrolled state
+    const sortState = propSortState !== undefined ? propSortState : internalSortState;
+    const filters = propFilters !== undefined ? propFilters : internalFilters;
+
+    const handleSort = useCallback((key: string, direction: TableSortDirection) => {
+        const nextSort = { columnKey: key, direction };
+        setInternalSortState(nextSort);
+        if (onSort) onSort(nextSort);
+    }, [onSort]);
+
+    const handleFilter = useCallback((key: string, value: string) => {
+        setInternalFilters(prev => {
+            const next = { ...prev, [key]: value };
+            if (onFilter) onFilter(next);
+            return next;
+        });
+    }, [onFilter]);
 
     // Sync columns if props change, but try to preserve widths if keys match
     useEffect(() => {
@@ -149,23 +169,6 @@ export const Table = <T extends object>({
         });
     }, [onColumnUpdate]);
 
-    const handleSort = useCallback((columnKey: string, direction: TableSortDirection) => {
-        const newState = { columnKey, direction };
-        if (mode === 'server') {
-            if (onSort) onSort(newState);
-        } else {
-            setSortState(newState);
-        }
-    }, [mode, onSort]);
-
-    const handleFilter = useCallback((columnKey: string, value: string) => {
-        const newFilters = { ...filters, [columnKey]: value };
-        if (mode === 'server') {
-            if (onFilter) onFilter(newFilters);
-        } else {
-            setFilters(newFilters);
-        }
-    }, [mode, filters, onFilter]);
 
     const processedData = useMemo(() => {
         if (mode === 'server') return data;

@@ -102,12 +102,49 @@ export const Header: FC<HeaderProps> = ({
                                 userSelect: 'none', // Prevent text selection while resizing
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: col.align === 'center' ? 'center' : col.align === 'right' ? 'flex-end' : 'flex-start' }}>
-                                {col.headerRender ? (
-                                    col.headerRender(col)
-                                ) : (
-                                    <span>{col.title}</span>
-                                )}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: col.align === 'center' ? 'center' : col.align === 'right' ? 'flex-end' : 'flex-start',
+                                cursor: col.sortable ? 'pointer' : 'default',
+                            }}>
+                                <div
+                                    onClick={() => {
+                                        if (col.sortable) {
+                                            const currentDirection = sortState?.columnKey === col.key ? sortState.direction : null;
+                                            let nextDirection: TableSortDirection = 'asc';
+
+                                            if (currentDirection === 'asc') nextDirection = 'desc';
+                                            else if (currentDirection === 'desc') nextDirection = null;
+
+                                            onSort(col.key, nextDirection);
+                                        }
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        flex: 1,
+                                        overflow: 'hidden'
+                                    }}
+                                >
+                                    {col.headerRender ? (
+                                        col.headerRender(col)
+                                    ) : (
+                                        <span style={{
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {col.title}
+                                        </span>
+                                    )}
+                                    {sortState?.columnKey === col.key && (
+                                        <span style={{ fontSize: '12px', opacity: 0.8 }}>
+                                            {sortState.direction === 'asc' ? '↑' : sortState.direction === 'desc' ? '↓' : ''}
+                                        </span>
+                                    )}
+                                </div>
                                 <ColumnMenu
                                     column={col}
                                     theme={theme}

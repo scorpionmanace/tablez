@@ -167,5 +167,23 @@ describe('Table Component', () => {
 
             expect(handleSort).toHaveBeenCalledWith({ columnKey: 'id', direction: 'asc' });
         });
+
+        it('toggles sort on header click', () => {
+            const handleSort = vi.fn();
+            const { rerender } = render(<Table data={data} columns={sortColumns} settings={{ mode: "server" }} onSort={handleSort} />);
+
+            const idHeader = screen.getByText('ID');
+
+            // First click -> asc
+            fireEvent.click(idHeader);
+            expect(handleSort).toHaveBeenCalledWith({ columnKey: 'id', direction: 'asc' });
+
+            // Rerender with controlled state
+            rerender(<Table data={data} columns={sortColumns} settings={{ mode: "server" }} onSort={handleSort} sortState={{ columnKey: 'id', direction: 'asc' }} />);
+
+            // Second click -> desc
+            fireEvent.click(screen.getByText('ID'));
+            expect(handleSort).toHaveBeenCalledWith({ columnKey: 'id', direction: 'desc' });
+        });
     });
 });
