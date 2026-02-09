@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Table, darkTheme } from './lib';
-import type { Column, TableSortState, TableFilters } from './lib';
+import { useState, useEffect, useMemo } from 'react';
+import { Table, darkTheme, TablezEngine } from './lib';
+import type { Column, TableSortState, TableFilters, TableTheme } from './lib';
+import { calculateVirtualization } from './lib/core/engine';
 import './App.css';
 
 interface User {
@@ -30,7 +31,6 @@ const columns: Column<User>[] = [
     align: 'center',
     sortable: true,
     fixed: 'left',
-    headerStyle: { borderLeft: '4px solid #3b82f6' }
   },
   {
     key: 'name',
@@ -38,13 +38,11 @@ const columns: Column<User>[] = [
     sortable: true,
     filterable: true,
     editable: true,
-    // Custom header with icon
     headerRender: () => (
       <span style={{ display: 'flex', alignItems: 'center', fontWeight: 700 }}>
         <UserIcon /> User Name
       </span>
     ),
-    // Custom cell style
     style: { fontWeight: 500 }
   },
   {
@@ -81,10 +79,30 @@ const columns: Column<User>[] = [
   },
 ];
 
+// --- Custom Theme (BYOT) ---
+const midnightTheme: TableTheme = {
+  tokens: {
+    primaryColor: '#8b5cf6',
+    backgroundColor: '#0f172a',
+    headerBackgroundColor: '#1e293b',
+    borderColor: '#334155',
+    textColor: '#f8fafc',
+    headerTextColor: '#e2e8f0',
+    rowHoverColor: '#1e293b',
+    borderRadius: '12px',
+    padding: '16px 20px',
+  },
+  headerCell: {
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  }
+};
+
 function App() {
+  const [activeTab, setActiveTab] = useState<'main' | 'theme' | 'vanilla' | 'core'>('main');
   const [useDark, setUseDark] = useState(false);
   const [resizable, setResizable] = useState(true);
-  const [virtualized, setVirtualized] = useState(false);
+  const [virtualized, setVirtualized] = useState(true);
   const [mode, setMode] = useState<'client' | 'server'>('client');
   const [loading, setLoading] = useState(false);
   const [serverData, setServerData] = useState<User[]>([]);
@@ -100,15 +118,12 @@ function App() {
     }));
   });
 
-  // Handle cell edit
   const handleCellEdit = (record: User, key: string, value: any) => {
-    console.log('Cell edited:', { record, key, value });
     setAllData(prev => prev.map(item =>
       item.id === record.id ? { ...item, [key]: value } : item
     ));
   };
 
-  // Initialize server data
   useEffect(() => {
     if (mode === 'server') {
       setServerData(allData.slice(0, 50));
@@ -117,7 +132,6 @@ function App() {
 
   const handleServerSort = (sortState: TableSortState) => {
     setLoading(true);
-    // Simulate API delay
     setTimeout(() => {
       const sorted = [...allData].sort((a, b) => {
         const valA = (a as any)[sortState.columnKey];
@@ -133,7 +147,6 @@ function App() {
 
   const handleServerFilter = (filters: TableFilters) => {
     setLoading(true);
-    // Simulate API delay
     setTimeout(() => {
       let filtered = [...allData];
       Object.entries(filters).forEach(([key, value]) => {
@@ -146,68 +159,159 @@ function App() {
     }, 500);
   };
 
-  // Custom row zebra styling
-  const getRowClassName = (_record: User, index: number) => {
-    return index % 2 === 0 ? 'row-even' : 'row-odd';
-  };
+  // --- Vanilla Engine Example ---
+  const [vanillaState, setVanillaState] = useState<any>(null);
+  const vanillaEngine = useMemo(() => new TablezEngine({
+    data: allData.slice(0, 100),
+    columns: columns as any,
+    containerHeight: 300,
+    onUpdate: (state) => setVanillaState(state)
+  }), [allData]);
 
   return (
     <div className="container">
-      <h1>Tablez Library Demo</h1>
+      <header style={{ marginBottom: 40, borderBottom: '1px solid #eee', paddingBottom: 20 }}>
+        <h1>Tablez <span style={{ color: '#3b82f6', fontSize: '0.6em', fontWeight: 400 }}>v0.0.5</span></h1>
+        <p style={{ color: '#666' }}>Modern, Headless, and Framework-Agnostic Data Tables</p>
+      </header>
 
-      <div style={{ marginBottom: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <button onClick={() => setUseDark(!useDark)}>
-          Theme: {useDark ? 'Dark' : 'Light'}
-        </button>
-        <button onClick={() => setMode(mode === 'client' ? 'server' : 'client')}>
-          Mode: {mode.toUpperCase()}
-        </button>
-        <button onClick={() => setVirtualized(!virtualized)}>
-          Virtualization: {virtualized ? 'ON' : 'OFF'}
-        </button>
-        <button onClick={() => setResizable(!resizable)}>
-          Resizing: {resizable ? 'ON' : 'OFF'}
-        </button>
-        <button onClick={() => setShowBorders(!showBorders)}>
-          Separators: {showBorders ? 'ON' : 'OFF'}
-        </button>
-      </div>
+      <nav style={{ display: 'flex', gap: 10, marginBottom: 30, borderBottom: '2px solid #f1f5f9' }}>
+        {(['main', 'theme', 'vanilla', 'core'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              backgroundColor: activeTab === tab ? '#3b82f6' : 'transparent',
+              color: activeTab === tab ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px 8px 0 0',
+              padding: '12px 20px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {tab === 'main' && 'Interactive Demo'}
+            {tab === 'theme' && 'Custom Theme (BYOT)'}
+            {tab === 'vanilla' && 'Headless Engine'}
+            {tab === 'core' && 'Core Utilities'}
+          </button>
+        ))}
+      </nav>
 
-      <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
-        <strong>Current Config:</strong> {mode === 'client' ? 'Client-side processing' : 'Server-side processing (simulated)'}
-        <span style={{ marginLeft: 15, color: '#3b82f6' }}>❄ Headers and Columns can now be Frozen/Fixed!</span>
-      </div>
+      <div className="tab-content" style={{ minHeight: 600 }}>
+        {activeTab === 'main' && (
+          <div className="demo-section">
+            <div className="controls" style={{ marginBottom: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button onClick={() => setUseDark(!useDark)}>Theme: {useDark ? 'Dark' : 'Light'}</button>
+              <button onClick={() => setMode(mode === 'client' ? 'server' : 'client')}>Mode: {mode.toUpperCase()}</button>
+              <button onClick={() => setVirtualized(!virtualized)}>Virtual: {virtualized ? 'ON' : 'OFF'}</button>
+              <button onClick={() => setResizable(!resizable)}>Resizing: {resizable ? 'ON' : 'OFF'}</button>
+              <button onClick={() => setShowBorders(!showBorders)}>Separators: {showBorders ? 'ON' : 'OFF'}</button>
+            </div>
 
-      <style>{`
-          .row-even { background-color: rgba(0,0,0,0.02); }
-          .row-odd { background-color: transparent; }
-          [data-theme='dark'] .row-even { background-color: rgba(255,255,255,0.03); }
-      `}</style>
+            <div data-theme={useDark ? 'dark' : 'light'} className="table-wrapper">
+              <Table
+                data={mode === 'client' ? allData : serverData}
+                columns={columns}
+                settings={{
+                  theme: useDark ? darkTheme : undefined,
+                  resizable,
+                  virtualized,
+                  mode,
+                  loading,
+                  showColumnBorders: showBorders,
+                  containerHeight: 500,
+                }}
+                rowSettings={{
+                  key: "id",
+                  height: 52,
+                }}
+                onSort={mode === 'server' ? handleServerSort : undefined}
+                onFilter={mode === 'server' ? handleServerFilter : undefined}
+                onCellEdit={handleCellEdit}
+              />
+            </div>
+          </div>
+        )}
 
-      <div
-        data-theme={useDark ? 'dark' : 'light'}
-        style={{ border: '1px solid #ccc', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-      >
-        <Table
-          data={mode === 'client' ? allData : serverData}
-          columns={columns}
-          settings={{
-            theme: useDark ? darkTheme : undefined,
-            resizable,
-            virtualized,
-            mode,
-            loading,
-            showColumnBorders: showBorders,
-            containerHeight: 400,
-          }}
-          rowSettings={{
-            key: "id",
-            className: getRowClassName,
-          }}
-          onSort={mode === 'server' ? handleServerSort : undefined}
-          onFilter={mode === 'server' ? handleServerFilter : undefined}
-          onCellEdit={handleCellEdit}
-        />
+        {activeTab === 'theme' && (
+          <div className="demo-section">
+            <h3 style={{ marginBottom: 15 }}>"Midnight" Custom Theme Example</h3>
+            <p style={{ color: '#666', marginBottom: 20 }}>Demonstrating token-based theming with primary violet accents and deep slate backgrounds.</p>
+            <div className="table-wrapper" style={{ borderRadius: 12, overflow: 'hidden' }}>
+              <Table
+                data={allData.slice(0, 100)}
+                columns={[
+                  { key: 'id', title: 'ID', width: 60, align: 'center', fixed: 'left' },
+                  { key: 'name', title: 'Name', width: 200, sortable: true },
+                  { key: 'role', title: 'User Role', width: 150 },
+                  { key: 'status', title: 'Status', width: 120 }
+                ]}
+                settings={{
+                  theme: midnightTheme,
+                  virtualized: true,
+                  containerHeight: 400,
+                  showColumnBorders: false
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'vanilla' && (
+          <div className="demo-section">
+            <h3 style={{ marginBottom: 15 }}>Headless Engine Class</h3>
+            <p style={{ color: '#666', marginBottom: 20 }}>Using <code>TablezEngine</code> class directly to drive a custom UI (standard HTML buttons/lists).</p>
+
+            <div style={{ display: 'flex', gap: 20 }}>
+              <div style={{ flex: 1, border: '1px solid #eee', padding: 20, borderRadius: 8 }}>
+                <h4>Engine State</h4>
+                <pre style={{ backgroundColor: '#f8fafc', padding: 10, fontSize: '0.8em', maxHeight: 200, overflow: 'auto' }}>
+                  {JSON.stringify({
+                    startIndex: vanillaState?.startIndex,
+                    endIndex: vanillaState?.endIndex,
+                    offsetY: vanillaState?.offsetY,
+                    totalHeight: vanillaState?.totalHeight
+                  }, null, 2)}
+                </pre>
+              </div>
+              <div
+                onScroll={(e) => vanillaEngine.setScrollTop((e.target as any).scrollTop)}
+                style={{ flex: 1, height: 300, overflow: 'auto', border: '2px dashed #cbd5e1', position: 'relative' }}
+              >
+                <div style={{ height: vanillaState?.totalHeight, position: 'relative' }}>
+                  <div style={{ transform: `translateY(${vanillaState?.offsetY}px)`, position: 'absolute', width: '100%' }}>
+                    {vanillaState?.visibleData.map((u: any) => (
+                      <div key={u.id} style={{ height: 50, borderBottom: '1px solid #eee', padding: '0 15px', display: 'flex', alignItems: 'center' }}>
+                        <strong>#{u.id}</strong> - {u.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'core' && (
+          <div className="demo-section">
+            <h3 style={{ marginBottom: 15 }}>Pure Engine Math</h3>
+            <p style={{ color: '#666', marginBottom: 20 }}>Demonstrating <code>calculateVirtualization</code> utility used for framework adapters.</p>
+
+            <div style={{ backgroundColor: '#f8fafc', padding: 25, borderRadius: 12, fontFamily: 'monospace' }}>
+              <div>// Calculation for 1M rows at 40px height, scrolled 10k pixels</div>
+              <pre style={{ color: '#0369a1', marginTop: 15 }}>
+                {JSON.stringify(calculateVirtualization({
+                  scrollTop: 10000,
+                  rowHeight: 40,
+                  containerHeight: 600,
+                  dataLength: 1000000,
+                  overscan: 5
+                }), null, 4)}
+              </pre>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
