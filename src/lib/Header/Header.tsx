@@ -129,7 +129,7 @@ export const Header: FC<HeaderProps> = ({
                         <th
                             key={col.key || index}
                             className={col.headerClassName}
-                            draggable={draggableColumns && !isFixed}
+                            draggable={draggableColumns && !isFixed && col.draggable !== false}
                             onDragStart={(e) => handleDragStart(e, index)}
                             onDragOver={(e) => handleDragOver(e, index)}
                             onDrop={(e) => handleDrop(e, index)}
@@ -143,7 +143,7 @@ export const Header: FC<HeaderProps> = ({
                                 width: col.width,
                                 textAlign: col.align,
                                 userSelect: 'none', // Prevent text selection while resizing
-                                cursor: draggableColumns && !isFixed ? 'grab' : 'default',
+                                cursor: draggableColumns && !isFixed && col.draggable !== false ? 'grab' : 'default',
                                 transition: 'border-left 0.1s ease',
                             }}
                         >
@@ -153,6 +153,27 @@ export const Header: FC<HeaderProps> = ({
                                 justifyContent: col.align === 'center' ? 'center' : col.align === 'right' ? 'flex-end' : 'flex-start',
                                 cursor: col.sortable ? 'pointer' : 'default',
                             }}>
+                                {draggableColumns && !isFixed && col.draggable !== false && (
+                                    <div
+                                        style={{
+                                            marginRight: '6px',
+                                            opacity: 0.3,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            cursor: 'grab'
+                                        }}
+                                        title="Drag to reorder"
+                                    >
+                                        <svg width="6" height="10" viewBox="0 0 6 10" fill="currentColor">
+                                            <circle cx="1" cy="1" r="1" />
+                                            <circle cx="1" cy="5" r="1" />
+                                            <circle cx="1" cy="9" r="1" />
+                                            <circle cx="5" cy="1" r="1" />
+                                            <circle cx="5" cy="5" r="1" />
+                                            <circle cx="5" cy="9" r="1" />
+                                        </svg>
+                                    </div>
+                                )}
                                 <div
                                     onClick={() => {
                                         if (col.sortable) {

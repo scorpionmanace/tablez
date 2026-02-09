@@ -63,6 +63,7 @@ const columns: Column<User>[] = [
     sortable: true,
     filterable: false, // Menu will hide if this and freezable are false
     freezable: false,   // Disable freeze to hide menu
+    draggable: false,   // Disable drag to make it immovable
     render: (value) => (
       <span
         style={{

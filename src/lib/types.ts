@@ -19,6 +19,7 @@ export interface Column<T = any> {
     fixed?: 'left' | 'right'; // Freeze column to left or right
     formula?: string; // Excel-like formula starting with '='
     freezable?: boolean; // Enable/disable freezing for this column
+    draggable?: boolean; // Enable/disable reordering for this column
 }
 
 export interface TableTokens {

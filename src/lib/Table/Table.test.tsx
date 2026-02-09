@@ -210,5 +210,23 @@ describe('Table Component', () => {
             expect(rows[1].children[0]).toHaveTextContent('Alice'); // Name first now
             expect(rows[1].children[1]).toHaveTextContent('1'); // ID second now
         });
+
+        it('respects column draggable property', () => {
+            const dragColumns: Column<User>[] = [
+                { key: 'id', title: 'ID', draggable: true },
+                { key: 'name', title: 'Name', draggable: false },
+            ];
+            render(<Table data={data} columns={dragColumns} settings={{ draggableColumns: true }} />);
+
+            const idHeader = screen.getByText('ID').closest('th');
+            const nameHeader = screen.getByText('Name').closest('th');
+
+            expect(idHeader).toBeInTheDocument();
+            expect(nameHeader).toBeInTheDocument();
+
+            // Based on logic: draggableColumns && !isFixed && col.draggable !== false
+            expect(idHeader).toHaveAttribute('draggable', 'true');
+            expect(nameHeader).toHaveAttribute('draggable', 'false');
+        });
     });
 });
