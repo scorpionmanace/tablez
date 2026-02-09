@@ -128,7 +128,7 @@ describe('Table Component', () => {
             render(<Table data={data} columns={sortColumns} />);
 
             // Open menu and sort descending
-            const menuButtons = screen.getAllByText('⋮');
+            const menuButtons = screen.getAllByLabelText('Column Menu');
             fireEvent.click(menuButtons[1]); // Name column menu
 
             const descButton = screen.getByText('↓ Sort Descending');
@@ -144,7 +144,7 @@ describe('Table Component', () => {
             render(<Table data={data} columns={sortColumns} />);
 
             // Open menu and search
-            const menuButtons = screen.getAllByText('⋮');
+            const menuButtons = screen.getAllByLabelText('Column Menu');
             fireEvent.click(menuButtons[1]); // Name column menu
 
             const searchInput = screen.getByPlaceholderText('Search Name...');
@@ -159,7 +159,7 @@ describe('Table Component', () => {
             render(<Table data={data} columns={sortColumns} settings={{ mode: "server" }} onSort={handleSort} />);
 
             // Open menu and sort
-            const menuButtons = screen.getAllByText('⋮');
+            const menuButtons = screen.getAllByLabelText('Column Menu');
             fireEvent.click(menuButtons[0]); // ID column menu
 
             const ascButton = screen.getByText('↑ Sort Ascending');

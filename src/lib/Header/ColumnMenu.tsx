@@ -40,6 +40,8 @@ export const ColumnMenu = ({
         onFilter(val);
     };
 
+    const iconColor = theme.tokens?.headerTextColor || theme.tokens?.textColor || '#475569';
+
     return (
         <div style={{ position: 'relative', display: 'inline-block', marginLeft: '4px' }} ref={menuRef}>
             <button
@@ -48,13 +50,26 @@ export const ColumnMenu = ({
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    padding: '2px',
+                    padding: '4px',
                     display: 'flex',
                     alignItems: 'center',
-                    opacity: isOpen || currentSort || currentFilter ? 1 : 0.5,
+                    justifyContent: 'center',
+                    opacity: isOpen || currentSort || currentFilter ? 1 : 0.4,
+                    transition: 'opacity 0.2s',
                 }}
+                aria-label="Column Menu"
             >
-                ⋮
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    width: '12px',
+                    height: '9px',
+                }}>
+                    <span style={{ height: '1.5px', width: '100%', backgroundColor: iconColor, borderRadius: '1px' }} />
+                    <span style={{ height: '1.5px', width: '100%', backgroundColor: iconColor, borderRadius: '1px' }} />
+                    <span style={{ height: '1.5px', width: '100%', backgroundColor: iconColor, borderRadius: '1px' }} />
+                </div>
             </button>
 
             {isOpen && (
