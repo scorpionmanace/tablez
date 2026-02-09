@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import type { TableProps, TableTheme, Column, TableSortState, TableFilters, TableSortDirection } from '../types';
+import type { TableProps, TableTheme, Column, TableSortState, TableFilters, TableSortDirection, ContextMenuItem, ContextMenuDefaultOption } from '../types';
 import { Header } from '../Header/Header';
 import { Row } from './Row';
 import { ContextMenu } from './ContextMenu';
@@ -250,12 +250,40 @@ export const Table = <T extends object>({
         };
     }, []);
 
+    // Selection/Focus state for keyboard shortcuts
+    const [lastFocused, setLastFocused] = useState<{ record: T; column: Column<T> } | null>(null);
+    const [editingHeaderKey, setEditingHeaderKey] = useState<string | null>(null);
+
+    // History for Undo/Redo
+    const [history, setHistory] = useState<T[][]>([data]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+
+    // Sync history if data changes from outside and it's not our own change
+    useEffect(() => {
+        if (data !== history[historyIndex]) {
+            setHistory([data]);
+            setHistoryIndex(0);
+        }
+    }, [data]);
+
+    const updateDataWithHistory = useCallback((newData: T[]) => {
+        const nextHistory = history.slice(0, historyIndex + 1);
+        nextHistory.push(newData);
+        if (nextHistory.length > 50) nextHistory.shift();
+
+        setHistory(nextHistory);
+        setHistoryIndex(nextHistory.length - 1);
+
+        if (onDataChange) onDataChange(newData);
+    }, [history, historyIndex, onDataChange]);
+
     // Context Menu Handlers
     const onContextMenu = useCallback((record: T, column: Column<T>, e: React.MouseEvent) => {
         // Only show if setting enabled
         if (!settings.contextMenu?.enabled) return;
 
         e.preventDefault();
+        setLastFocused({ record, column });
         setContextMenu({
             visible: true,
             x: e.clientX,
@@ -273,60 +301,79 @@ export const Table = <T extends object>({
                 const newCols = columns.filter(c => c.key !== column.key);
                 onColumnUpdate(newCols);
             }
+        } else if (action === 'renameColumn') {
+            setEditingHeaderKey(column.key);
+        } else if (action === 'undo') {
+            if (historyIndex > 0) {
+                const prevData = history[historyIndex - 1];
+                setHistoryIndex(historyIndex - 1);
+                if (onDataChange) onDataChange(prevData);
+            }
+        } else if (action === 'redo') {
+            if (historyIndex < history.length - 1) {
+                const nextData = history[historyIndex + 1];
+                setHistoryIndex(historyIndex + 1);
+                if (onDataChange) onDataChange(nextData);
+            }
+        } else if (action === 'copy') {
+            const val = (record as any)[column.key];
+            navigator.clipboard.writeText(String(val));
+        } else if (action === 'cut') {
+            const val = (record as any)[column.key];
+            navigator.clipboard.writeText(String(val));
+            if (onCellEdit) {
+                onCellEdit(record, column.key, '');
+            }
+        } else if (action === 'paste') {
+            navigator.clipboard.readText().then(text => {
+                if (onCellEdit) onCellEdit(record, column.key, text);
+            }).catch(err => {
+                console.warn('Failed to read clipboard', err);
+            });
         } else if (action === 'hideRow') {
-            if (onDataChange) {
-                // Determine equality - best effort if rowKey exists
-                const keyToCheck = rowKey
-                    ? (typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey])
-                    : record;
+            const keyToCheck = rowKey
+                ? (typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey])
+                : record;
 
-                const newData = data.filter(d => {
-                    const dKey = rowKey ? (typeof rowKey === 'function' ? rowKey(d) : (d as any)[rowKey]) : d;
-                    // simple strict equality if key is primitive, or object ref equality
-                    return dKey !== keyToCheck;
-                });
-                onDataChange(newData);
-            }
+            const newData = data.filter(d => {
+                const dKey = rowKey ? (typeof rowKey === 'function' ? rowKey(d) : (d as any)[rowKey]) : d;
+                return dKey !== keyToCheck;
+            });
+            updateDataWithHistory(newData);
         } else if (action === 'insertRowAbove' || action === 'insertRowBelow') {
-            if (onDataChange) {
-                let index = -1;
-                // Try to find index by rowKey first
-                if (rowKey) {
-                    const keyToCheck = typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey];
-                    index = data.findIndex(d => {
-                        const dKey = typeof rowKey === 'function' ? rowKey(d) : (d as any)[rowKey];
-                        return dKey === keyToCheck;
-                    });
-                }
-                // Fallback to reference equality
-                if (index === -1) {
-                    index = data.indexOf(record);
-                }
-
-                if (index > -1) {
-                    const newData = [...data];
-                    // Clone record logic
-                    const clone = JSON.parse(JSON.stringify(record));
-                    // Basic ID reset if 'id' looks like a number
-                    if ('id' in clone && typeof clone.id === 'number') {
-                        (clone as any).id = Math.floor(Math.random() * 1000000);
-                    } else if ('id' in clone && typeof clone.id === 'string') {
-                        (clone as any).id = Math.random().toString(36).substr(2, 9);
-                    }
-
-                    if (action === 'insertRowAbove') newData.splice(index, 0, clone);
-                    else newData.splice(index + 1, 0, clone);
-
-                    onDataChange(newData);
-                }
+            let index = -1;
+            if (rowKey) {
+                const keyToCheck = typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey];
+                index = data.findIndex(d => {
+                    const dKey = typeof rowKey === 'function' ? rowKey(d) : (d as any)[rowKey];
+                    return dKey === keyToCheck;
+                });
             }
-        }
-        else if (action === 'insertColumnLeft' || action === 'insertColumnRight') {
+            if (index === -1) {
+                index = data.indexOf(record);
+            }
+
+            if (index > -1) {
+                const newData = [...data];
+                const clone = JSON.parse(JSON.stringify(record));
+                if ('id' in clone && typeof clone.id === 'number') {
+                    (clone as any).id = Math.floor(Math.random() * 1000000);
+                } else if ('id' in clone && typeof clone.id === 'string') {
+                    (clone as any).id = Math.random().toString(36).substr(2, 9);
+                }
+
+                if (action === 'insertRowAbove') newData.splice(index, 0, clone);
+                else newData.splice(index + 1, 0, clone);
+
+                updateDataWithHistory(newData);
+            }
+        } else if (action === 'insertColumnLeft' || action === 'insertColumnRight') {
             if (onColumnUpdate) {
                 const idx = columns.findIndex(c => c.key === column.key);
                 if (idx > -1) {
+                    const newKey = `col_${Math.random().toString(36).substr(2, 9)}`;
                     const newCol: Column<T> = {
-                        key: `col_${Math.random().toString(36).substr(2, 9)}`,
+                        key: newKey,
                         title: 'New Column',
                         width: 150,
                         editable: true,
@@ -337,12 +384,96 @@ export const Table = <T extends object>({
                     else newCols.splice(idx + 1, 0, newCol);
 
                     onColumnUpdate(newCols);
+                    setEditingHeaderKey(newKey);
                 }
             }
         }
+    }, [columns, data, onColumnUpdate, onDataChange, rowKey, history, historyIndex, updateDataWithHistory, onCellEdit]);
 
-    }, [columns, data, onColumnUpdate, onDataChange, rowKey]);
+    const handleAction = useCallback((action: ContextMenuItem | ContextMenuDefaultOption, record: T, column: Column<T>) => {
+        if (typeof action === 'string') {
+            onContextMenuAction(action as string, record, column);
+        } else if (action.onClick) {
+            action.onClick(record, column);
+        }
+    }, [onContextMenuAction]);
 
+    const DEFAULT_SHORTCUTS: Record<string, string> = {
+        'undo': 'Mod+Z',
+        'redo': 'Mod+Y',
+        'copy': 'Mod+C',
+        'cut': 'Mod+X',
+        'paste': 'Mod+V'
+    };
+
+    // Keyboard Shortcuts
+    const mergedItems = useMemo(() => {
+        if (!settings.contextMenu?.enabled) return [];
+
+        return settings.contextMenu.items || [
+            ...(settings.contextMenu.options || []),
+            ...(settings.contextMenu.customActions || []).map(a => ({
+                label: a.label,
+                onClick: a.onClick,
+                shortcut: a.shortcut
+            }))
+        ];
+    }, [settings.contextMenu]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!settings.contextMenu?.enabled || mergedItems.length === 0) return;
+            if (!lastFocused) return;
+
+            // Don't trigger if editing
+            if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+            const isMac = typeof window !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+
+            const match = (shortcut: string) => {
+                const parts = shortcut.split('+');
+                const ctrl = parts.includes('Ctrl');
+                const mod = parts.includes('Mod');
+                const shift = parts.includes('Shift');
+                const alt = parts.includes('Alt');
+                const key = parts[parts.length - 1].toUpperCase();
+
+                const modActive = isMac ? e.metaKey : e.ctrlKey;
+                const modMatch = mod ? modActive : (ctrl ? e.ctrlKey : !modActive);
+
+                const shiftMatch = shift ? e.shiftKey : !e.shiftKey;
+                const altMatch = alt ? e.altKey : !e.altKey;
+
+                return modMatch && shiftMatch && altMatch && (e.key.toUpperCase() === key || e.code.toUpperCase() === `KEY${key}`);
+            };
+
+            const processItems = (items: (ContextMenuItem | ContextMenuDefaultOption)[]): boolean => {
+                for (const item of items) {
+                    if (typeof item === 'string') {
+                        const shortcut = DEFAULT_SHORTCUTS[item];
+                        if (shortcut && match(shortcut)) {
+                            e.preventDefault();
+                            onContextMenuAction(item, lastFocused.record, lastFocused.column);
+                            return true;
+                        }
+                    } else {
+                        if (item.shortcut && match(item.shortcut)) {
+                            e.preventDefault();
+                            handleAction(item, lastFocused.record, lastFocused.column);
+                            return true;
+                        }
+                        if (item.children && processItems(item.children)) return true;
+                    }
+                }
+                return false;
+            };
+
+            processItems(mergedItems);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [settings.contextMenu?.enabled, mergedItems, lastFocused, handleAction, onContextMenuAction]);
 
     const tableContent = (
         <table
@@ -367,6 +498,12 @@ export const Table = <T extends object>({
                 showColumnBorders={showColumnBorders}
                 draggableColumns={draggableColumns}
                 onReorder={handleReorder}
+                onColumnUpdate={(newCols: Column<T>[]) => {
+                    setColumns(newCols);
+                    if (onColumnUpdate) onColumnUpdate(newCols);
+                    setEditingHeaderKey(null);
+                }}
+                managedEditingKey={editingHeaderKey}
             />
             {virtualized ? (
                 <tbody>
@@ -387,6 +524,7 @@ export const Table = <T extends object>({
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
                                 onContextMenu={onContextMenu} // Pass handler
+                                onFocus={(column: Column<T>) => setLastFocused({ record, column })}
                                 index={index}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
@@ -424,6 +562,7 @@ export const Table = <T extends object>({
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
                                 onContextMenu={onContextMenu} // Pass handler
+                                onFocus={(column: Column<T>) => setLastFocused({ record, column })}
                                 index={originalIndex}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
@@ -456,6 +595,7 @@ export const Table = <T extends object>({
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
                                 onContextMenu={onContextMenu} // Pass handler
+                                onFocus={(column: Column<T>) => setLastFocused({ record, column })}
                                 index={index}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
@@ -488,6 +628,7 @@ export const Table = <T extends object>({
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
                                 onContextMenu={onContextMenu} // Pass handler
+                                onFocus={(column: Column<T>) => setLastFocused({ record, column })}
                                 index={originalIndex}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
@@ -504,7 +645,7 @@ export const Table = <T extends object>({
         if (!theme.tokens) return {};
         const vars: Record<string, string> = {};
         Object.entries(theme.tokens).forEach(([key, value]) => {
-            if (value) {
+            if (value && typeof value === 'string') {
                 const cssKey = `--tz-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
                 vars[cssKey] = value;
             }
@@ -552,8 +693,7 @@ export const Table = <T extends object>({
                     y={contextMenu.y}
                     onClose={() => setContextMenu(prev => ({ ...prev, visible: false }))}
                     theme={theme}
-                    options={settings.contextMenu?.options || []}
-                    customActions={settings.contextMenu?.customActions}
+                    items={mergedItems}
                     record={contextMenu.record}
                     column={contextMenu.column}
                     onAction={onContextMenuAction}

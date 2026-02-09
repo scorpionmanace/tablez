@@ -11,6 +11,7 @@ interface RowProps<T> {
     onClick?: (record: T) => void;
     onCellEdit?: (record: T, key: string, value: any) => void;
     onContextMenu?: (record: T, column: Column<T>, e: MouseEvent) => void;
+    onFocus?: (column: Column<T>) => void;
     style?: CSSProperties;
     index: number;
     className?: string | ((record: T, index: number) => string);
@@ -25,6 +26,7 @@ const RowInner = <T,>({
     onClick,
     onCellEdit,
     onContextMenu,
+    onFocus,
     style,
     index,
     className,
@@ -84,6 +86,7 @@ const RowInner = <T,>({
                         index={idx}
                         onEdit={onCellEdit}
                         onContextMenu={onContextMenu}
+                        onFocus={() => onFocus?.(col)}
                         stickyStyles={stickyStyles}
                         showColumnBorders={showColumnBorders}
                     />

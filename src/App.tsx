@@ -303,15 +303,40 @@ function App() {
                   containerHeight: 500,
                   contextMenu: {
                     enabled: contextMenuEnabled,
-                    options: ['hideColumn', 'hideRow', 'insertRowBelow', 'insertRowAbove', 'insertColumnLeft', 'insertColumnRight'],
-                    customActions: [
+                    items: [
+                      'insertRowAbove',
+                      'insertRowBelow',
+                      { type: 'separator' },
+                      'insertColumnLeft',
+                      'insertColumnRight',
+                      { type: 'separator' },
                       {
-                        label: 'Log User Details',
+                        label: 'Log Details',
+                        shortcut: 'Mod+L',
                         onClick: (record) => {
                           console.log('User Record:', record);
                           alert(`User: ${record.name}\nRole: ${record.role}`);
                         }
-                      }
+                      },
+                      {
+                        label: 'Social',
+                        children: [
+                          { label: 'Share on Twitter', onClick: () => alert('Shared!') },
+                          { label: 'Connect on LinkedIn', onClick: () => alert('Connected!') },
+                        ]
+                      },
+                      { type: 'separator' },
+                      'hideRow',
+                      'hideColumn',
+                      'renameColumn',
+                      { type: 'separator' },
+                      'undo',
+                      'redo',
+                      { type: 'separator' },
+                      'copy',
+                      'cut',
+                      'paste',
+                      'pasteSpecial',
                     ]
                   }
                 }}

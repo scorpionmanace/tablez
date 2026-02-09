@@ -43,7 +43,7 @@ describe('Table Context Menu', () => {
         const settings: TableSettings = {
             contextMenu: {
                 enabled: true,
-                options: ['hideRow', 'hideColumn']
+                items: ['hideRow', 'hideColumn']
             }
         };
 
@@ -71,7 +71,7 @@ describe('Table Context Menu', () => {
         const settings: TableSettings = {
             contextMenu: {
                 enabled: true,
-                options: ['hideColumn']
+                items: ['hideColumn']
             }
         };
 
@@ -104,8 +104,7 @@ describe('Table Context Menu', () => {
         const settings: TableSettings = {
             contextMenu: {
                 enabled: true,
-                options: [],
-                customActions: [
+                items: [
                     { label: 'My Action', onClick: customAction }
                 ]
             }
@@ -138,7 +137,7 @@ describe('Table Context Menu', () => {
         const settings: TableSettings = {
             contextMenu: {
                 enabled: true,
-                options: ['insertRowBelow']
+                items: ['insertRowBelow']
             }
         };
 
@@ -163,5 +162,99 @@ describe('Table Context Menu', () => {
         expect(newData).toHaveLength(3);
         // We verify that a new item was inserted logic was simplistic (clone)
         // so we expect length 3.
+    });
+
+    it('triggers shortcut for custom action', () => {
+        const customAction = vi.fn();
+        const settings: TableSettings = {
+            contextMenu: {
+                enabled: true,
+                items: [
+                    { label: 'Save', onClick: customAction, shortcut: 'Mod+S' }
+                ]
+            }
+        };
+
+        const { container } = render(
+            <Table
+                data={data}
+                columns={columns}
+                settings={settings}
+            />
+        );
+
+        const cell = container.querySelector('td');
+        if (cell) {
+            fireEvent.focus(cell);
+            // Simulate Mod+S (Cmd+S on mac, Ctrl+S on others)
+            // The match logic in Table.tsx uses /Mac/ test on navigator.platform
+            // In JSDOM, we might need to mock this if we want to be sure, but let's try a simple one.
+            fireEvent.keyDown(window, { key: 's', ctrlKey: true, metaKey: false });
+        }
+
+        expect(customAction).toHaveBeenCalled();
+    });
+
+    it('shows sub-menu items on hover', async () => {
+        const settings: TableSettings = {
+            contextMenu: {
+                enabled: true,
+                items: [
+                    {
+                        label: 'Group',
+                        children: [
+                            { label: 'Sub Item', onClick: vi.fn() }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        const { container } = render(
+            <Table
+                data={data}
+                columns={columns}
+                settings={settings}
+            />
+        );
+
+        const cell = container.querySelector('td');
+        if (cell) {
+            fireEvent.contextMenu(cell);
+        }
+
+        const groupOption = screen.getByText('Group');
+        fireEvent.mouseEnter(groupOption);
+
+        expect(screen.getByText('Sub Item')).toBeInTheDocument();
+    });
+
+    it('allows renaming column header via double-click', async () => {
+        const onColumnUpdate = vi.fn();
+        render(<Table data={data} columns={columns} settings={{ contextMenu: { enabled: true } }} onColumnUpdate={onColumnUpdate} />);
+
+        const header = screen.getByText('Name');
+        fireEvent.doubleClick(header);
+
+        const input = screen.getByDisplayValue('Name');
+        fireEvent.change(input, { target: { value: 'Full Name' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+
+        expect(onColumnUpdate).toHaveBeenCalled();
+        const call = onColumnUpdate.mock.calls[0][0];
+        expect(call.find((c: any) => c.key === 'name').title).toBe('Full Name');
+    });
+
+    it('triggers header rename from context menu', async () => {
+        render(<Table data={data} columns={columns} settings={{ contextMenu: { enabled: true, items: ['renameColumn'] } }} />);
+
+        const cell = screen.getByText('Alice');
+        fireEvent.contextMenu(cell);
+
+        const renameOption = screen.getByText('Rename Column');
+        fireEvent.click(renameOption);
+
+        // Should now show input in header
+        expect(screen.getByDisplayValue('Name')).toBeInTheDocument();
     });
 });

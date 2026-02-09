@@ -86,12 +86,28 @@ export interface TableSettings extends BaseTableSettings {
     theme?: TableTheme;
     contextMenu?: {
         enabled?: boolean;
-        options?: ('hideRow' | 'hideColumn' | 'insertRowBelow' | 'insertRowAbove' | 'insertColumnLeft' | 'insertColumnRight')[];
+        items?: (ContextMenuItem | ContextMenuDefaultOption)[];
+        /** @deprecated Use items instead */
+        options?: ContextMenuDefaultOption[];
+        /** @deprecated Use items instead */
         customActions?: {
             label: string;
             onClick: (record: any, column: Column<any>) => void;
+            shortcut?: string;
         }[];
     };
+}
+
+export type ContextMenuDefaultOption = 'hideRow' | 'hideColumn' | 'insertRowBelow' | 'insertRowAbove' | 'insertColumnLeft' | 'insertColumnRight' | 'renameColumn' | 'undo' | 'redo' | 'copy' | 'cut' | 'paste' | 'pasteSpecial';
+
+export interface ContextMenuItem {
+    label?: string;
+    icon?: ReactNode;
+    shortcut?: string;
+    onClick?: (record: any, column: Column<any>) => void;
+    children?: (ContextMenuItem | ContextMenuDefaultOption)[];
+    type?: 'separator' | 'item';
+    disabled?: boolean;
 }
 
 export interface RowSettings<T> extends BaseRowSettings {

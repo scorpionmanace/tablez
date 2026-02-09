@@ -9,6 +9,7 @@ interface CellProps<T> {
     index: number;
     onEdit?: (record: T, key: string, value: any) => void;
     onContextMenu?: (record: T, column: Column<T>, e: MouseEvent) => void;
+    onFocus?: () => void;
     stickyStyles?: CSSProperties;
     showColumnBorders?: boolean;
 }
@@ -24,6 +25,7 @@ const CellInner = <T,>({
     index,
     onEdit,
     onContextMenu,
+    onFocus,
     stickyStyles,
     showColumnBorders
 }: CellProps<T>) => {
@@ -79,6 +81,21 @@ const CellInner = <T,>({
         }
     };
 
+    const handleTdKeyDown = (e: React.KeyboardEvent) => {
+        if (!isEditing && editable) {
+            // Check if it's a "printable" character (length 1 and no modifiers)
+            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                setIsEditing(true);
+                setEditValue(e.key);
+                e.preventDefault();
+            } else if (e.key === 'Enter' || e.key === 'F2') {
+                setIsEditing(true);
+                setEditValue(value);
+                e.preventDefault();
+            }
+        }
+    };
+
     const moveFocus = (direction: 'left' | 'right' | 'down') => {
         // Simple DOM navigation. 
         // Note: This relies on the table structure being rendered consistently.
@@ -119,7 +136,12 @@ const CellInner = <T,>({
                 }
 
                 if (editValue instanceof Date) {
-                    finalValue = editValue.toISOString();
+                    if (!isNaN(editValue.getTime())) {
+                        finalValue = editValue.toISOString();
+                    } else {
+                        // Revert if invalid date provided via object
+                        finalValue = value;
+                    }
                 }
 
                 onEdit(record, column.key, finalValue);
@@ -186,7 +208,12 @@ const CellInner = <T,>({
                     {showCalendar && (
                         <div className="tablez-calendar" onMouseDown={(e) => e.preventDefault()}>
                             <Calendar
-                                value={editValue ? new Date(editValue) : undefined}
+                                value={(() => {
+                                    if (editValue instanceof Date) return editValue;
+                                    if (!editValue) return undefined;
+                                    const d = new Date(editValue);
+                                    return !isNaN(d.getTime()) ? d : undefined;
+                                })()}
                                 onChange={(date) => {
                                     setEditValue(date);
                                     setShowCalendar(false);
@@ -226,7 +253,9 @@ const CellInner = <T,>({
         <td
             tabIndex={0}
             onDoubleClick={handleDoubleClick}
+            onKeyDown={handleTdKeyDown}
             onContextMenu={(e) => onContextMenu?.(record, column, e)}
+            onFocus={onFocus}
             className={column.className}
             style={{
                 ...theme.cell,

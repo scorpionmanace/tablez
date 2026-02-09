@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { TableTheme } from '../types';
 
 interface CalendarProps {
@@ -12,13 +12,25 @@ const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export const Calendar: React.FC<CalendarProps> = ({ value, onChange, theme }) => {
-    // Current view state (year/month)
-    const [viewDate, setViewDate] = useState(() => value ? new Date(value) : new Date());
+    const isDateValid = (d: any): d is Date => d instanceof Date && !isNaN(d.getTime());
 
-    const { year, month } = useMemo(() => ({
-        year: viewDate.getFullYear(),
-        month: viewDate.getMonth()
-    }), [viewDate]);
+    // Current view state (year/month)
+    const [viewDate, setViewDate] = useState(() => isDateValid(value) ? new Date(value) : new Date());
+
+    // Sync view if value changes to a valid date
+    useEffect(() => {
+        if (isDateValid(value)) {
+            setViewDate(new Date(value));
+        }
+    }, [value]);
+
+    const { year, month } = useMemo(() => {
+        const safeDate = isDateValid(viewDate) ? viewDate : new Date();
+        return {
+            year: safeDate.getFullYear(),
+            month: safeDate.getMonth()
+        };
+    }, [viewDate]);
 
     // Generate grid
     const days = useMemo(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { FC } from 'react';
 import type { Column, TableTheme, TableSortDirection, TableSortState, TableFilters } from '../types';
 import { ColumnMenu } from './ColumnMenu';
@@ -17,6 +17,8 @@ interface HeaderProps {
     showColumnBorders?: boolean;
     draggableColumns?: boolean;
     onReorder?: (fromIndex: number, toIndex: number) => void;
+    onColumnUpdate?: (columns: Column[]) => void;
+    managedEditingKey?: string | null;
 }
 
 export const Header: FC<HeaderProps> = ({
@@ -32,11 +34,57 @@ export const Header: FC<HeaderProps> = ({
     showColumnBorders = true,
     draggableColumns = false,
     onReorder,
+    onColumnUpdate,
+    managedEditingKey,
 }) => {
     const [resizingIndex, setResizingIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
     const [startX, setStartX] = useState(0);
     const [startWidth, setStartWidth] = useState(0);
+
+    const [editingColumnKey, setEditingColumnKey] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState('');
+    const editInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (managedEditingKey !== undefined) {
+            setEditingColumnKey(managedEditingKey);
+            if (managedEditingKey) {
+                const col = columns.find(c => c.key === managedEditingKey);
+                if (col) setEditValue(String(col.title));
+            }
+        }
+    }, [managedEditingKey, columns]);
+
+    useEffect(() => {
+        if (editingColumnKey && editInputRef.current) {
+            editInputRef.current.focus();
+            editInputRef.current.select();
+        }
+    }, [editingColumnKey]);
+
+    const handleHeaderDoubleClick = (col: Column) => {
+        setEditingColumnKey(col.key);
+        setEditValue(String(col.title));
+    };
+
+    const commitHeaderEdit = () => {
+        if (editingColumnKey && onColumnUpdate) {
+            const newCols = columns.map(c =>
+                c.key === editingColumnKey ? { ...c, title: editValue } : c
+            );
+            onColumnUpdate(newCols);
+        }
+        setEditingColumnKey(null);
+    };
+
+    const handleHeaderKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            commitHeaderEdit();
+        } else if (e.key === 'Escape') {
+            setEditingColumnKey(null);
+        }
+    };
 
     const handleDragStart = (e: React.DragEvent, index: number) => {
         if (!draggableColumns) return;
@@ -125,6 +173,8 @@ export const Header: FC<HeaderProps> = ({
                         backgroundColor: theme.header?.backgroundColor || theme.tokens?.headerBackgroundColor || '#fff', // Ensure opaque background
                     } : {};
 
+                    const isEditing = editingColumnKey === col.key;
+
                     return (
                         <th
                             key={col.key || index}
@@ -134,6 +184,7 @@ export const Header: FC<HeaderProps> = ({
                             onDragOver={(e) => handleDragOver(e, index)}
                             onDrop={(e) => handleDrop(e, index)}
                             onDragEnd={handleDragEnd}
+                            onDoubleClick={() => handleHeaderDoubleClick(col)}
                             style={{
                                 ...theme.headerCell,
                                 ...col.headerStyle,
@@ -142,18 +193,19 @@ export const Header: FC<HeaderProps> = ({
                                 borderLeft: dragOverIndex === index ? `2px solid ${theme.tokens?.primaryColor || '#3b82f6'}` : undefined,
                                 width: col.width,
                                 textAlign: col.align,
-                                userSelect: 'none', // Prevent text selection while resizing
-                                cursor: draggableColumns && !isFixed && col.draggable !== false ? 'grab' : 'default',
+                                userSelect: isEditing ? 'auto' : 'none', // Allow selection while editing
+                                cursor: isEditing ? 'text' : (draggableColumns && !isFixed && col.draggable !== false ? 'grab' : 'default'),
                                 transition: 'border-left 0.1s ease',
+                                position: 'relative'
                             }}
                         >
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: col.align === 'center' ? 'center' : col.align === 'right' ? 'flex-end' : 'flex-start',
-                                cursor: col.sortable ? 'pointer' : 'default',
+                                cursor: isEditing ? 'text' : (col.sortable ? 'pointer' : 'default'),
                             }}>
-                                {draggableColumns && !isFixed && col.draggable !== false && (
+                                {draggableColumns && !isFixed && col.draggable !== false && !isEditing && (
                                     <div
                                         style={{
                                             marginRight: '6px',
@@ -175,7 +227,11 @@ export const Header: FC<HeaderProps> = ({
                                     </div>
                                 )}
                                 <div
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        if (isEditing) {
+                                            e.stopPropagation();
+                                            return;
+                                        }
                                         if (col.sortable) {
                                             const currentDirection = sortState?.columnKey === col.key ? sortState.direction : null;
                                             let nextDirection: TableSortDirection = 'asc';
@@ -194,7 +250,28 @@ export const Header: FC<HeaderProps> = ({
                                         overflow: 'hidden'
                                     }}
                                 >
-                                    {col.headerRender ? (
+                                    {isEditing ? (
+                                        <input
+                                            ref={editInputRef}
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            onBlur={commitHeaderEdit}
+                                            onKeyDown={handleHeaderKeyDown}
+                                            style={{
+                                                width: '100%',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                outline: 'none',
+                                                color: 'inherit',
+                                                fontSize: 'inherit',
+                                                fontWeight: 'inherit',
+                                                fontFamily: 'inherit',
+                                                padding: 0,
+                                                margin: 0,
+                                                textAlign: col.align
+                                            }}
+                                        />
+                                    ) : col.headerRender ? (
                                         col.headerRender(col)
                                     ) : (
                                         <span style={{
@@ -205,7 +282,7 @@ export const Header: FC<HeaderProps> = ({
                                             {col.title}
                                         </span>
                                     )}
-                                    {col.sortable && (
+                                    {col.sortable && !isEditing && (
                                         <div style={{
                                             display: 'flex',
                                             flexDirection: 'column',
@@ -228,7 +305,7 @@ export const Header: FC<HeaderProps> = ({
                                         </div>
                                     )}
                                 </div>
-                                {(col.sortable !== false || col.filterable !== false || (!!onFreeze && col.freezable !== false)) && (
+                                {!isEditing && (col.sortable !== false || col.filterable !== false || (!!onFreeze && col.freezable !== false)) && (
                                     <ColumnMenu
                                         column={col}
                                         theme={theme}
