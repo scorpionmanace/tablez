@@ -191,18 +191,22 @@ function App() {
         <Table
           data={mode === 'client' ? allData : serverData}
           columns={columns}
-          rowKey="id"
-          theme={useDark ? darkTheme : undefined}
-          resizable={resizable}
-          virtualized={virtualized}
-          mode={mode}
-          loading={loading}
+          settings={{
+            theme: useDark ? darkTheme : undefined,
+            resizable,
+            virtualized,
+            mode,
+            loading,
+            showColumnBorders: showBorders,
+            containerHeight: 400,
+          }}
+          rowSettings={{
+            key: "id",
+            className: getRowClassName,
+          }}
           onSort={mode === 'server' ? handleServerSort : undefined}
           onFilter={mode === 'server' ? handleServerFilter : undefined}
           onCellEdit={handleCellEdit}
-          rowClassName={getRowClassName}
-          showColumnBorders={showBorders}
-          containerHeight={400}
         />
       </div>
     </div>

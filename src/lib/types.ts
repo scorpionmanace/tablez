@@ -41,37 +41,46 @@ export interface TableSortState {
 
 export type TableFilters = Record<string, string>;
 
+export interface TableSettings {
+    virtualized?: boolean;
+    containerHeight?: number;
+    mode?: 'client' | 'server';
+    loading?: boolean;
+    showColumnBorders?: boolean;
+    resizable?: boolean; // Global enable
+    className?: string;
+    style?: CSSProperties;
+    theme?: TableTheme;
+}
+
+export interface RowSettings<T> {
+    key?: string | ((record: T) => string);
+    height?: number;
+    overscan?: number;
+    className?: string | ((record: T, index: number) => string);
+    onClick?: (record: T) => void;
+}
+
+export interface TableComponents {
+    Row?: React.ComponentType<any>;
+    Cell?: React.ComponentType<any>;
+    Header?: React.ComponentType<any>;
+}
+
 export interface TableProps<T> {
     data: T[];
     columns: Column<T>[];
-    theme?: TableTheme;
-    rowKey?: string | ((record: T) => string);
-    onRowClick?: (record: T) => void;
-    resizable?: boolean; // Global resize enable
-    onColumnResize?: (columns: Column<T>[]) => void;
-    className?: string;
-    style?: CSSProperties;
-    virtualized?: boolean; // Enable virtual scrolling for large datasets
-    rowHeight?: number; // Height of each row in pixels (required for virtualization, default: 50)
-    containerHeight?: number; // Height of the scrollable container (default: 500)
-    overscan?: number; // Number of extra rows to render above/below viewport (default: 3)
 
-    // Client/Server side support
-    mode?: 'client' | 'server';
-    loading?: boolean;
+    // Grouped settings
+    settings?: TableSettings;
+    rowSettings?: RowSettings<T>;
+
+    // Callbacks
     onSort?: (sortState: TableSortState) => void;
     onFilter?: (filters: TableFilters) => void;
     onColumnUpdate?: (columns: Column<T>[]) => void;
-
-    // Editing support
     onCellEdit?: (record: T, key: string, value: any) => void;
 
-    // Customization
-    rowClassName?: string | ((record: T, index: number) => string);
-    showColumnBorders?: boolean;
-    components?: {
-        Row?: React.ComponentType<any>;
-        Cell?: React.ComponentType<any>;
-        Header?: React.ComponentType<any>;
-    };
+    // Advanced
+    components?: TableComponents;
 }

@@ -7,27 +7,35 @@ import { defaultTheme } from '../Theme/theme';
 export const Table = <T extends object>({
     data,
     columns: initialColumns,
-    theme: userTheme,
-    rowKey,
-    onRowClick,
-    resizable,
-    onColumnResize,
-    className,
-    style,
-    virtualized = false,
-    rowHeight = 50,
-    containerHeight = 500,
-    overscan = 3,
-    mode = 'client',
-    loading = false,
+    settings = {},
+    rowSettings = {},
     onSort,
     onFilter,
-    onCellEdit,
-    rowClassName,
-    showColumnBorders = true,
     onColumnUpdate,
+    onCellEdit,
     components = {},
 }: TableProps<T>) => {
+    // Extract settings with defaults
+    const {
+        virtualized = false,
+        containerHeight = 500,
+        mode = 'client',
+        loading = false,
+        showColumnBorders = true,
+        resizable = false,
+        className,
+        style,
+        theme: userTheme,
+    } = settings;
+
+    // Extract row settings with defaults
+    const {
+        key: rowKey,
+        height: rowHeight = 50,
+        overscan = 3,
+        className: rowClassName,
+        onClick: onRowClick,
+    } = rowSettings;
     const { Row: CustomRow, Header: CustomHeader } = components;
     const RowComponent = (CustomRow as any) || Row;
     const HeaderComponent = (CustomHeader as any) || Header;
@@ -75,12 +83,12 @@ export const Table = <T extends object>({
         setColumns(prev => {
             const next = [...prev];
             next[index] = { ...next[index], width: newWidth };
-            if (onColumnResize) {
-                onColumnResize(next);
+            if (onColumnUpdate) {
+                onColumnUpdate(next);
             }
             return next;
         });
-    }, [onColumnResize]);
+    }, [onColumnUpdate]);
 
     const handleSort = useCallback((columnKey: string, direction: TableSortDirection) => {
         const newState = { columnKey, direction };

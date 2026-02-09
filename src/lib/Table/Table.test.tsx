@@ -30,7 +30,7 @@ describe('Table Component', () => {
 
     it('handles row click', () => {
         const handleClick = vi.fn();
-        render(<Table data={data} columns={columns} onRowClick={handleClick} />);
+        render(<Table data={data} columns={columns} rowSettings={{ onClick: handleClick }} />);
 
         fireEvent.click(screen.getByText('Alice'));
 
@@ -45,7 +45,7 @@ describe('Table Component', () => {
                 name: `User ${i}`,
             }));
 
-            render(<Table data={largeData} columns={columns} virtualized={false} />);
+            render(<Table data={largeData} columns={columns} settings={{ virtualized: false }} />);
 
             // All rows should be rendered
             expect(screen.getByText('User 0')).toBeInTheDocument();
@@ -62,10 +62,14 @@ describe('Table Component', () => {
                 <Table
                     data={largeData}
                     columns={columns}
-                    virtualized={true}
-                    rowHeight={50}
-                    containerHeight={500}
-                    overscan={3}
+                    settings={{
+                        virtualized: true,
+                        containerHeight: 500
+                    }}
+                    rowSettings={{
+                        height: 50,
+                        overscan: 3
+                    }}
                 />
             );
 
@@ -92,9 +96,13 @@ describe('Table Component', () => {
                 <Table
                     data={largeData}
                     columns={columns}
-                    virtualized={true}
-                    rowHeight={50}
-                    containerHeight={500}
+                    settings={{
+                        virtualized: true,
+                        containerHeight: 500
+                    }}
+                    rowSettings={{
+                        height: 50
+                    }}
                 />
             );
 
@@ -148,7 +156,7 @@ describe('Table Component', () => {
 
         it('calls onSort in server mode', () => {
             const handleSort = vi.fn();
-            render(<Table data={data} columns={sortColumns} mode="server" onSort={handleSort} />);
+            render(<Table data={data} columns={sortColumns} settings={{ mode: "server" }} onSort={handleSort} />);
 
             // Open menu and sort
             const menuButtons = screen.getAllByText('⋮');
