@@ -61,8 +61,10 @@ const CellInner = <T,>({ record, column, theme, index, onEdit }: CellProps<T>) =
     return (
         <td
             onDoubleClick={handleDoubleClick}
+            className={column.className}
             style={{
                 ...theme.cell,
+                ...column.style,
                 textAlign: column.align,
                 position: 'relative',
                 minHeight: '20px',

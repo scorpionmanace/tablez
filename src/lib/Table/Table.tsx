@@ -23,7 +23,13 @@ export const Table = <T extends object>({
     onSort,
     onFilter,
     onCellEdit,
+    rowClassName,
+    components = {},
 }: TableProps<T>) => {
+    const { Row: CustomRow, Header: CustomHeader } = components;
+    const RowComponent = (CustomRow as any) || Row;
+    const HeaderComponent = (CustomHeader as any) || Header;
+
     const [columns, setColumns] = useState<Column<T>[]>(initialColumns);
     const [scrollTop, setScrollTop] = useState(0);
     const [sortState, setSortState] = useState<TableSortState | undefined>();
@@ -62,59 +68,52 @@ export const Table = <T extends object>({
 
     const handleSort = useCallback((columnKey: string, direction: TableSortDirection) => {
         const newState = { columnKey, direction };
-        setSortState(newState);
-        if (mode === 'server' && onSort) {
-            onSort(newState);
+        if (mode === 'server') {
+            if (onSort) onSort(newState);
+        } else {
+            setSortState(newState);
         }
     }, [mode, onSort]);
 
     const handleFilter = useCallback((columnKey: string, value: string) => {
-        setFilters(prev => {
-            const next = { ...prev };
-            if (value) {
-                next[columnKey] = value;
-            } else {
-                delete next[columnKey];
-            }
-            if (mode === 'server' && onFilter) {
-                onFilter(next);
-            }
-            return next;
-        });
-    }, [mode, onFilter]);
+        const newFilters = { ...filters, [columnKey]: value };
+        if (mode === 'server') {
+            if (onFilter) onFilter(newFilters);
+        } else {
+            setFilters(newFilters);
+        }
+    }, [mode, filters, onFilter]);
 
-    // Client-side processing (filtering & sorting)
     const processedData = useMemo(() => {
         if (mode === 'server') return data;
 
         let result = [...data];
 
-        // Filtering
+        // Apply filters
         Object.entries(filters).forEach(([key, value]) => {
             if (!value) return;
             result = result.filter(item => {
-                const itemValue = (item as any)[key];
-                return String(itemValue).toLowerCase().includes(value.toLowerCase());
+                const itemValue = String((item as any)[key]).toLowerCase();
+                return itemValue.includes(value.toLowerCase());
             });
         });
 
-        // Sorting
-        if (sortState && sortState.direction) {
+        // Apply sort
+        if (sortState?.direction) {
             const { columnKey, direction } = sortState;
             result.sort((a, b) => {
                 const valA = (a as any)[columnKey];
                 const valB = (b as any)[columnKey];
 
-                if (valA < valB) return direction === 'asc' ? -1 : 1;
-                if (valA > valB) return direction === 'asc' ? 1 : -1;
-                return 0;
+                if (valA === valB) return 0;
+                const comparison = valA < valB ? -1 : 1;
+                return direction === 'asc' ? comparison : -comparison;
             });
         }
 
         return result;
     }, [data, mode, filters, sortState]);
 
-    // Virtualization calculations
     const { visibleData, totalHeight, offsetY } = useMemo(() => {
         if (!virtualized) {
             return {
@@ -144,7 +143,7 @@ export const Table = <T extends object>({
 
     const tableContent = (
         <table className={className} style={{ ...theme.table, ...style, opacity: loading ? 0.6 : 1 }}>
-            <Header
+            <HeaderComponent
                 columns={columns}
                 theme={theme}
                 resizable={resizable}
@@ -166,13 +165,15 @@ export const Table = <T extends object>({
                             : originalIndex;
 
                         return (
-                            <Row
+                            <RowComponent
                                 key={key}
                                 record={record}
                                 columns={columns}
                                 theme={theme}
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
+                                index={originalIndex}
+                                className={rowClassName}
                             />
                         );
                     })}
@@ -187,13 +188,15 @@ export const Table = <T extends object>({
                             : index;
 
                         return (
-                            <Row
+                            <RowComponent
                                 key={key}
                                 record={record}
                                 columns={columns}
                                 theme={theme}
                                 onClick={onRowClick}
                                 onCellEdit={onCellEdit}
+                                index={index}
+                                className={rowClassName}
                             />
                         );
                     })}

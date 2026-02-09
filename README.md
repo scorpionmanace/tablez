@@ -74,6 +74,8 @@ Tablez supports theming. You can use the built-in `defaultTheme` or `darkTheme`,
 | `onSort` | `(state: TableSortState) => void` | Server-mode sort callback |
 | `onFilter` | `(filters: TableFilters) => void` | Server-mode filter callback |
 | `onCellEdit` | `(record: T, key: string, value: any) => void` | Callback when a cell is edited |
+| `rowClassName` | `string \| (record: T, index: number) => string` | Custom CSS class for rows |
+| `components` | `object` | Override Row, Cell, or Header components |
 
 ### `Column` Properties
 
@@ -81,11 +83,56 @@ Tablez supports theming. You can use the built-in `defaultTheme` or `darkTheme`,
 |----------|------|-------------|
 | `key` | `string` | Unique key for the column |
 | `title` | `ReactNode` | Column header title |
+| `render` | `function` | Custom cell rendering function |
+| `headerRender`| `function` | Custom header rendering function |
 | `sortable` | `boolean` | Enable sorting for this column |
 | `filterable` | `boolean` | Enable search filter for this column |
 | `editable` | `boolean \| (record: T) => boolean` | Enable cell editing |
 | `width` | `number` | Width in pixels |
 | `align` | `'left' \| 'center' \| 'right'` | Text alignment |
+| `className` | `string` | Custom CSS class for cells in this column |
+| `headerClassName`| `string` | Custom CSS class for header cell |
+| `style` | `CSSProperties` | Inline styles for cells |
+| `headerStyle` | `CSSProperties` | Inline styles for header |
+
+## 🎨 Advanced Customization
+
+### Custom Header/Cell JSX
+You can inject any JSX into headers and cells.
+
+```tsx
+const columns = [
+  {
+    key: 'user',
+    title: 'User',
+    headerRender: () => <span><UserIcon /> Name</span>,
+    render: (val) => <strong><val.name></strong>
+  }
+];
+```
+
+### Row Styling
+Zebra striping or conditional row coloring:
+
+```tsx
+<Table
+  rowClassName={(record, index) => index % 2 === 0 ? 'even' : 'odd'}
+  ...
+/>
+```
+
+### Component Overrides
+For complete control, you can swap out internal components:
+
+```tsx
+<Table
+  components={{
+    Row: MyCustomRow,
+    Cell: MyCustomCell
+  }}
+  ...
+/>
+```
 
 ## ✍️ Cell Editing
 

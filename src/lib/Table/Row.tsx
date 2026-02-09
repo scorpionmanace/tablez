@@ -10,11 +10,16 @@ interface RowProps<T> {
     onClick?: (record: T) => void;
     onCellEdit?: (record: T, key: string, value: any) => void;
     style?: CSSProperties;
+    index: number;
+    className?: string | ((record: T, index: number) => string);
 }
 
-const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style }: RowProps<T>) => {
+const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, index, className }: RowProps<T>) => {
+    const rowClassName = typeof className === 'function' ? className(record, index) : className;
+
     return (
         <tr
+            className={rowClassName}
             style={{ ...theme.row, ...style, cursor: onClick ? 'pointer' : 'default' }}
             onClick={() => onClick?.(record)}
         >

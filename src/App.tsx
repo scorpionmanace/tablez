@@ -10,10 +10,54 @@ interface User {
   status: 'active' | 'inactive';
 }
 
+const UserIcon = () => (
+  <svg style={{ width: 16, height: 16, marginRight: 8, verticalAlign: 'middle' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+  </svg>
+);
+
+const RoleIcon = () => (
+  <svg style={{ width: 14, height: 14, marginRight: 6, verticalAlign: 'middle' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+  </svg>
+);
+
 const columns: Column<User>[] = [
-  { key: 'id', title: 'ID', width: 70, align: 'center', sortable: true },
-  { key: 'name', title: 'Name', sortable: true, filterable: true, editable: true },
-  { key: 'role', title: 'Role', sortable: true, filterable: true, editable: (record) => record.id !== 1 },
+  {
+    key: 'id',
+    title: 'ID',
+    width: 70,
+    align: 'center',
+    sortable: true,
+    headerStyle: { borderLeft: '4px solid #3b82f6' }
+  },
+  {
+    key: 'name',
+    title: 'Name',
+    sortable: true,
+    filterable: true,
+    editable: true,
+    // Custom header with icon
+    headerRender: () => (
+      <span style={{ display: 'flex', alignItems: 'center', fontWeight: 700 }}>
+        <UserIcon /> User Name
+      </span>
+    ),
+    // Custom cell style
+    style: { fontWeight: 500 }
+  },
+  {
+    key: 'role',
+    title: 'Role',
+    sortable: true,
+    filterable: true,
+    editable: (record) => record.id !== 1,
+    render: (value) => (
+      <span>
+        <RoleIcon /> {value}
+      </span>
+    )
+  },
   {
     key: 'status',
     title: 'Status',
@@ -103,6 +147,11 @@ function App() {
     }, 500);
   };
 
+  // Custom row zebra styling
+  const getRowClassName = (_record: User, index: number) => {
+    return index % 2 === 0 ? 'row-even' : 'row-odd';
+  };
+
   return (
     <div className="container">
       <h1>Tablez Library Demo</h1>
@@ -124,10 +173,19 @@ function App() {
 
       <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
         <strong>Current Config:</strong> {mode === 'client' ? 'Client-side processing' : 'Server-side processing (simulated)'}
-        <span style={{ marginLeft: 15, color: '#3b82f6' }}>💡 Double-click cells in Name or Role to edit!</span>
+        <span style={{ marginLeft: 15, color: '#3b82f6' }}>💡 Headers and Cells now support custom icons and JSX!</span>
       </div>
 
-      <div style={{ border: '1px solid #ccc', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+      <style>{`
+          .row-even { background-color: rgba(0,0,0,0.02); }
+          .row-odd { background-color: transparent; }
+          [data-theme='dark'] .row-even { background-color: rgba(255,255,255,0.03); }
+      `}</style>
+
+      <div
+        data-theme={useDark ? 'dark' : 'light'}
+        style={{ border: '1px solid #ccc', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+      >
         <Table
           data={mode === 'client' ? allData : serverData}
           columns={columns}
@@ -140,6 +198,7 @@ function App() {
           onSort={mode === 'server' ? handleServerSort : undefined}
           onFilter={mode === 'server' ? handleServerFilter : undefined}
           onCellEdit={handleCellEdit}
+          rowClassName={getRowClassName}
           containerHeight={400}
         />
       </div>

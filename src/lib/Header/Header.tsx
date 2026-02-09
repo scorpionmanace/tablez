@@ -71,8 +71,10 @@ export const Header: FC<HeaderProps> = ({
                 {columns.map((col, index) => (
                     <th
                         key={col.key || index}
+                        className={col.headerClassName}
                         style={{
                             ...theme.headerCell,
+                            ...col.headerStyle,
                             width: col.width,
                             textAlign: col.align,
                             position: 'relative', // For absolute positioning of resizer
@@ -80,7 +82,11 @@ export const Header: FC<HeaderProps> = ({
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: col.align === 'center' ? 'center' : col.align === 'right' ? 'flex-end' : 'flex-start' }}>
-                            <span>{col.title}</span>
+                            {col.headerRender ? (
+                                col.headerRender(col)
+                            ) : (
+                                <span>{col.title}</span>
+                            )}
                             <ColumnMenu
                                 column={col}
                                 theme={theme}

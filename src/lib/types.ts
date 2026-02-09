@@ -4,6 +4,7 @@ export interface Column<T = any> {
     key: string;
     title: ReactNode;
     render?: (value: any, record: T, index: number) => ReactNode;
+    headerRender?: (column: Column<T>) => ReactNode; // Custom header rendering
     width?: number; // Force number for easier resizing calculations
     resizable?: boolean; // Per-column resize override
     align?: 'left' | 'center' | 'right';
@@ -11,6 +12,10 @@ export interface Column<T = any> {
     filterable?: boolean;
     searchType?: 'text' | 'number';
     editable?: boolean | ((record: T) => boolean);
+    className?: string; // Custom cell className
+    headerClassName?: string; // Custom header className
+    style?: CSSProperties; // Custom cell style
+    headerStyle?: CSSProperties; // Custom header style
 }
 
 export interface TableTheme {
@@ -58,4 +63,12 @@ export interface TableProps<T> {
 
     // Editing support
     onCellEdit?: (record: T, key: string, value: any) => void;
+
+    // Customization
+    rowClassName?: string | ((record: T, index: number) => string);
+    components?: {
+        Row?: React.ComponentType<any>;
+        Cell?: React.ComponentType<any>;
+        Header?: React.ComponentType<any>;
+    };
 }
