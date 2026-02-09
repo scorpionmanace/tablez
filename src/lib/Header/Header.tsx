@@ -162,15 +162,17 @@ export const Header: FC<HeaderProps> = ({
                                         </div>
                                     )}
                                 </div>
-                                <ColumnMenu
-                                    column={col}
-                                    theme={theme}
-                                    onSort={(dir) => onSort(col.key, dir)}
-                                    onFilter={(val) => onFilter(col.key, val)}
-                                    onFreeze={(dir) => onFreeze?.(col.key, dir)}
-                                    currentSort={sortState?.columnKey === col.key ? sortState.direction : null}
-                                    currentFilter={filters[col.key]}
-                                />
+                                {(col.sortable !== false || col.filterable !== false || (!!onFreeze && col.freezable !== false)) && (
+                                    <ColumnMenu
+                                        column={col}
+                                        theme={theme}
+                                        onSort={(dir) => onSort(col.key, dir)}
+                                        onFilter={(val) => onFilter(col.key, val)}
+                                        onFreeze={(dir) => onFreeze?.(col.key, dir)}
+                                        currentSort={sortState?.columnKey === col.key ? sortState.direction : null}
+                                        currentFilter={filters[col.key]}
+                                    />
+                                )}
                             </div>
                             {resizable && col.resizable !== false && (
                                 <div

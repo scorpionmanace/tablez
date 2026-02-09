@@ -61,7 +61,8 @@ const columns: Column<User>[] = [
     key: 'status',
     title: 'Status',
     sortable: true,
-    filterable: true,
+    filterable: false, // Menu will hide if this and freezable are false
+    freezable: false,   // Disable freeze to hide menu
     render: (value) => (
       <span
         style={{
@@ -83,6 +84,9 @@ const columns: Column<User>[] = [
     width: 80,
     formula: "=IMG('https://api.dicebear.com/7.x/avataaars/svg?seed=' + {name}, {name}, 32, 32)",
     align: 'center' as const,
+    sortable: false,
+    filterable: false,
+    freezable: false,
   },
   {
     key: 'performance',

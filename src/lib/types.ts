@@ -18,6 +18,7 @@ export interface Column<T = any> {
     headerStyle?: CSSProperties; // Custom header style
     fixed?: 'left' | 'right'; // Freeze column to left or right
     formula?: string; // Excel-like formula starting with '='
+    freezable?: boolean; // Enable/disable freezing for this column
 }
 
 export interface TableTokens {
