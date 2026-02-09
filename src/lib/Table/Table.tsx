@@ -13,6 +13,7 @@ export const Table = <T extends object>({
     onSort,
     onFilter,
     onColumnUpdate,
+    onColumnOrderChange,
     onCellEdit,
     sortState: propSortState,
     filters: propFilters,
@@ -26,6 +27,7 @@ export const Table = <T extends object>({
         loading = false,
         showColumnBorders = true,
         resizable = false,
+        draggableColumns = false,
         className,
         style,
         theme: userTheme,
@@ -169,6 +171,22 @@ export const Table = <T extends object>({
         });
     }, [onColumnUpdate]);
 
+    const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
+        setColumns(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(fromIndex, 1);
+            next.splice(toIndex, 0, moved);
+
+            if (onColumnOrderChange) {
+                onColumnOrderChange(next.map(c => c.key));
+            }
+            if (onColumnUpdate) {
+                onColumnUpdate(next);
+            }
+            return next;
+        });
+    }, [onColumnOrderChange, onColumnUpdate]);
+
 
     const processedData = useMemo(() => {
         if (mode === 'server') return data;
@@ -230,6 +248,8 @@ export const Table = <T extends object>({
                 sortState={sortState}
                 filters={filters}
                 showColumnBorders={showColumnBorders}
+                draggableColumns={draggableColumns}
+                onReorder={handleReorder}
             />
             {virtualized ? (
                 <tbody>

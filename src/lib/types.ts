@@ -95,6 +95,7 @@ export interface TableProps<T> {
     onSort?: (sortState: TableSortState) => void;
     onFilter?: (filters: TableFilters) => void;
     onColumnUpdate?: (columns: Column<T>[]) => void;
+    onColumnOrderChange?: (columnKeys: string[]) => void;
     onCellEdit?: (record: T, key: string, value: any) => void;
 
     // State (Optional for controlled mode)

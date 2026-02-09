@@ -186,4 +186,29 @@ describe('Table Component', () => {
             expect(handleSort).toHaveBeenCalledWith({ columnKey: 'id', direction: 'desc' });
         });
     });
+
+    describe('Column Reordering', () => {
+        it('supports programmatic column reordering', () => {
+            const { rerender } = render(<Table data={data} columns={columns} />);
+
+            // Initial order: ID then Name
+            const headers = screen.getAllByRole('columnheader');
+            expect(headers[0]).toHaveTextContent('ID');
+            expect(headers[1]).toHaveTextContent('Name');
+
+            // Swap order
+            const reorderedColumns = [columns[1], columns[0]];
+            rerender(<Table data={data} columns={reorderedColumns} />);
+
+            const newHeaders = screen.getAllByRole('columnheader');
+            expect(newHeaders[0]).toHaveTextContent('Name');
+            expect(newHeaders[1]).toHaveTextContent('ID');
+
+            // Check cells in first row
+            const rows = screen.getAllByRole('row');
+            // First row (index 1 because index 0 is header)
+            expect(rows[1].children[0]).toHaveTextContent('Alice'); // Name first now
+            expect(rows[1].children[1]).toHaveTextContent('1'); // ID second now
+        });
+    });
 });

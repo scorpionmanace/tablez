@@ -3,6 +3,7 @@ export interface BaseTableSettings {
     containerHeight?: number;
     mode?: 'client' | 'server';
     loading?: boolean;
+    draggableColumns?: boolean;
 }
 
 export interface BaseRowSettings {

@@ -15,6 +15,8 @@ interface HeaderProps {
     sortState?: TableSortState;
     filters?: TableFilters;
     showColumnBorders?: boolean;
+    draggableColumns?: boolean;
+    onReorder?: (fromIndex: number, toIndex: number) => void;
 }
 
 export const Header: FC<HeaderProps> = ({
@@ -28,10 +30,45 @@ export const Header: FC<HeaderProps> = ({
     sortState,
     filters = {},
     showColumnBorders = true,
+    draggableColumns = false,
+    onReorder,
 }) => {
     const [resizingIndex, setResizingIndex] = useState<number | null>(null);
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
     const [startX, setStartX] = useState(0);
     const [startWidth, setStartWidth] = useState(0);
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        if (!draggableColumns) return;
+        e.dataTransfer.setData('text/plain', index.toString());
+        e.dataTransfer.effectAllowed = 'move';
+
+        // Add a ghost image or effect if desired
+        const target = e.target as HTMLElement;
+        target.style.opacity = '0.4';
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        if (!draggableColumns) return;
+        e.preventDefault();
+        setDragOverIndex(index);
+    };
+
+    const handleDrop = (e: React.DragEvent, toIndex: number) => {
+        if (!draggableColumns) return;
+        e.preventDefault();
+        setDragOverIndex(null);
+        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        if (fromIndex !== toIndex && onReorder) {
+            onReorder(fromIndex, toIndex);
+        }
+    };
+
+    const handleDragEnd = (e: React.DragEvent) => {
+        setDragOverIndex(null);
+        const target = e.target as HTMLElement;
+        target.style.opacity = '1';
+    };
 
     const handleMouseDown = (e: React.MouseEvent, index: number, width: number) => {
         e.preventDefault();
@@ -92,14 +129,22 @@ export const Header: FC<HeaderProps> = ({
                         <th
                             key={col.key || index}
                             className={col.headerClassName}
+                            draggable={draggableColumns && !isFixed}
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDrop={(e) => handleDrop(e, index)}
+                            onDragEnd={handleDragEnd}
                             style={{
                                 ...theme.headerCell,
                                 ...col.headerStyle,
                                 ...stickyStyles,
                                 borderRight: showColumnBorders ? `1px solid ${theme.tokens?.borderColor || '#e2e8f0'}` : 'none',
+                                borderLeft: dragOverIndex === index ? `2px solid ${theme.tokens?.primaryColor || '#3b82f6'}` : undefined,
                                 width: col.width,
                                 textAlign: col.align,
                                 userSelect: 'none', // Prevent text selection while resizing
+                                cursor: draggableColumns && !isFixed ? 'grab' : 'default',
+                                transition: 'border-left 0.1s ease',
                             }}
                         >
                             <div style={{

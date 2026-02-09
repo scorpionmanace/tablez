@@ -125,6 +125,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [serverData, setServerData] = useState<User[]>([]);
   const [showBorders, setShowBorders] = useState(true);
+  const [draggable, setDraggable] = useState(true);
+  const [currentColumns, setCurrentColumns] = useState(columns);
 
   // Base dataset state
   const [allData, setAllData] = useState<User[]>(() => {
@@ -135,6 +137,23 @@ function App() {
       status: i % 3 === 0 ? 'active' : 'inactive',
     }));
   });
+
+  const shuffleColumns = () => {
+    const next = [...currentColumns];
+    // Randomly move one column (excluding fixed ones like ID)
+    const movableIndices = next.map((c, i) => c.fixed ? -1 : i).filter(i => i !== -1);
+    if (movableIndices.length < 2) return;
+
+    const fromIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
+    let toIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
+    while (toIndex === fromIndex) {
+      toIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
+    }
+
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setCurrentColumns(next);
+  };
 
   const handleCellEdit = (record: User, key: string, value: any) => {
     setAllData(prev => prev.map(item =>
@@ -226,16 +245,20 @@ function App() {
               <button onClick={() => setMode(mode === 'client' ? 'server' : 'client')}>Mode: {mode.toUpperCase()}</button>
               <button onClick={() => setVirtualized(!virtualized)}>Virtual: {virtualized ? 'ON' : 'OFF'}</button>
               <button onClick={() => setResizable(!resizable)}>Resizing: {resizable ? 'ON' : 'OFF'}</button>
+              <button onClick={() => setDraggable(!draggable)}>Draggable: {draggable ? 'ON' : 'OFF'}</button>
+              <button onClick={shuffleColumns} style={{ backgroundColor: '#10b981', color: 'white' }}>🔀 Shuffle Columns</button>
               <button onClick={() => setShowBorders(!showBorders)}>Separators: {showBorders ? 'ON' : 'OFF'}</button>
             </div>
 
             <div data-theme={useDark ? 'dark' : 'light'} className="table-wrapper">
               <Table
                 data={mode === 'client' ? allData : serverData}
-                columns={columns}
+                columns={currentColumns}
+                onColumnUpdate={setCurrentColumns}
                 settings={{
                   theme: useDark ? darkTheme : undefined,
                   resizable,
+                  draggableColumns: draggable,
                   virtualized,
                   mode,
                   loading,
