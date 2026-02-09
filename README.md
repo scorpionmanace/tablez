@@ -6,6 +6,7 @@ Features:
 - 🎨 **Theming Support**: Fully customizable themes with built-in Light/Dark modes.
 - 📐 **Resizable Columns**: Drag-to-resize support.
 - ⚡ **Virtual Scrolling**: Efficient rendering for large datasets.
+- 🌳 **Tree Shaking**: Optimized for dead-code elimination.
 - 🔍 **Filtering & Sorting**: Built-in column menus with search and sort support.
 - 🌐 **Client & Server Side**: Support for both local and server-side data processing.
 - ⚛️ **TypeScript Ready**: Full type support out of the box.
