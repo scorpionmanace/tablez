@@ -112,7 +112,23 @@ const virtualization = computed(() => calculateVirtualization({
 ```
 
 ### React Native
-Since the core logic doesn't use the DOM, you can use it to drive a `FlatList` or custom scroll view in React Native for high-performance tables.
+Tablez provides a first-class `TableNative` component built on `FlatList` for mobile performance.
+
+```tsx
+import { TableNative } from '@scorpionmanace/tablez/native';
+
+<TableNative
+  data={data}
+  columns={[
+    { key: 'id', title: 'ID', width: 60 },
+    { key: 'name', title: 'Name', width: 200, sortable: true },
+    { key: 'status', title: 'Status', width: 100 }
+  ]}
+  rowHeight={60}
+  onSort={(state) => console.log(state)}
+/>
+```
+
 
 ---
 

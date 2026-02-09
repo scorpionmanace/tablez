@@ -16,12 +16,15 @@ export default defineConfig({
   build: {
     copyPublicDir: false,
     lib: {
-      entry: resolve(__dirname, 'src/lib/index.ts'),
+      entry: {
+        main: resolve(__dirname, 'src/lib/index.ts'),
+        native: resolve(__dirname, 'src/lib/native/index.ts'),
+      },
       name: 'Tablez',
-      fileName: (format) => `tablez.${format}.js`,
+      fileName: (format, entryName) => `${entryName === 'main' ? 'tablez' : entryName}.${format}.js`,
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime'],
+      external: ['react', 'react-dom', 'react/jsx-runtime', 'react-native'],
       output: {
         globals: {
           react: 'React',
