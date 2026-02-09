@@ -134,6 +134,21 @@ For complete control, you can swap out internal components:
 />
 ```
 
+## ❄ Column & Row Freezing
+
+### Freeze Columns
+Pin columns to the left or right side of the table using the `fixed` property. Users can also freeze/unfreeze columns via the column menu in the header.
+
+```tsx
+const columns = [
+  { key: 'id', title: 'ID', fixed: 'left', width: 70 },
+  { key: 'actions', title: 'Actions', fixed: 'right', width: 120 }
+];
+```
+
+### Frozen Header
+The header is automatically pinned to the top of the table. Ensure your scroll container has a height defined (via `containerHeight` or CSS).
+
 ## ✍️ Cell Editing
 
 Enable editing per column. Double-click to enter edit mode.

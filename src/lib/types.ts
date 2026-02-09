@@ -16,6 +16,7 @@ export interface Column<T = any> {
     headerClassName?: string; // Custom header className
     style?: CSSProperties; // Custom cell style
     headerStyle?: CSSProperties; // Custom header style
+    fixed?: 'left' | 'right'; // Freeze column to left or right
 }
 
 export interface TableTheme {
@@ -60,6 +61,7 @@ export interface TableProps<T> {
     loading?: boolean;
     onSort?: (sortState: TableSortState) => void;
     onFilter?: (filters: TableFilters) => void;
+    onColumnUpdate?: (columns: Column<T>[]) => void;
 
     // Editing support
     onCellEdit?: (record: T, key: string, value: any) => void;

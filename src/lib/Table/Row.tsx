@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import type { Column, TableTheme } from '../types';
 import { Cell } from './Cell';
@@ -17,22 +17,57 @@ interface RowProps<T> {
 const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, index, className }: RowProps<T>) => {
     const rowClassName = typeof className === 'function' ? className(record, index) : className;
 
+    // Calculate sticky offsets
+    const leftOffsets = useMemo(() => {
+        let current = 0;
+        return columns.map(col => {
+            const offset = col.fixed === 'left' ? current : 0;
+            if (col.fixed === 'left') current += col.width || 100;
+            return offset;
+        });
+    }, [columns]);
+
+    const rightOffsets = useMemo(() => {
+        let current = 0;
+        const reversed = [...columns].reverse();
+        const offsetsMap: Record<string, number> = {};
+        reversed.forEach(col => {
+            if (col.fixed === 'right') {
+                offsetsMap[col.key] = current;
+                current += col.width || 100;
+            }
+        });
+        return offsetsMap;
+    }, [columns]);
+
     return (
         <tr
             className={rowClassName}
             style={{ ...theme.row, ...style, cursor: onClick ? 'pointer' : 'default' }}
             onClick={() => onClick?.(record)}
         >
-            {columns.map((col, index) => (
-                <Cell
-                    key={col.key || index}
-                    record={record}
-                    column={col}
-                    theme={theme}
-                    index={index}
-                    onEdit={onCellEdit}
-                />
-            ))}
+            {columns.map((col, idx) => {
+                const isFixed = !!col.fixed;
+                const stickyStyles: CSSProperties = isFixed ? {
+                    position: 'sticky',
+                    left: col.fixed === 'left' ? leftOffsets[idx] : undefined,
+                    right: col.fixed === 'right' ? rightOffsets[col.key] : undefined,
+                    zIndex: 10,
+                    backgroundColor: theme.cell?.backgroundColor || theme.row?.backgroundColor || '#fff',
+                } : {};
+
+                return (
+                    <Cell
+                        key={col.key || idx}
+                        record={record}
+                        column={col}
+                        theme={theme}
+                        index={idx}
+                        onEdit={onCellEdit}
+                        stickyStyles={stickyStyles}
+                    />
+                );
+            })}
         </tr>
     );
 };

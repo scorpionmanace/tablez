@@ -6,6 +6,7 @@ interface ColumnMenuProps {
     theme: TableTheme;
     onSort: (direction: TableSortDirection) => void;
     onFilter: (value: string) => void;
+    onFreeze?: (direction: 'left' | 'right' | null) => void;
     currentSort?: TableSortDirection;
     currentFilter?: string;
 }
@@ -15,6 +16,7 @@ export const ColumnMenu = ({
     theme,
     onSort,
     onFilter,
+    onFreeze,
     currentSort,
     currentFilter = '',
 }: ColumnMenuProps) => {
@@ -66,68 +68,129 @@ export const ColumnMenu = ({
                         borderRadius: '4px',
                         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                         zIndex: 1000,
-                        minWidth: '150px',
+                        minWidth: '160px',
                         padding: '8px',
                         ...theme.menu,
                     }}
                 >
-                    {column.sortable !== false && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                            <button
-                                onClick={() => {
-                                    onSort('asc');
-                                    setIsOpen(false);
-                                }}
-                                style={{
-                                    textAlign: 'left',
-                                    padding: '4px 8px',
-                                    background: currentSort === 'asc' ? '#f0f0f0' : 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    borderRadius: '2px',
-                                    ...theme.menuItem,
-                                }}
-                            >
-                                ↑ Sort Ascending
-                            </button>
-                            <button
-                                onClick={() => {
-                                    onSort('desc');
-                                    setIsOpen(false);
-                                }}
-                                style={{
-                                    textAlign: 'left',
-                                    padding: '4px 8px',
-                                    background: currentSort === 'desc' ? '#f0f0f0' : 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    borderRadius: '2px',
-                                    ...theme.menuItem,
-                                }}
-                            >
-                                ↓ Sort Descending
-                            </button>
-                            {currentSort && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                        {column.sortable !== false && (
+                            <>
                                 <button
                                     onClick={() => {
-                                        onSort(null);
+                                        onSort('asc');
                                         setIsOpen(false);
                                     }}
                                     style={{
                                         textAlign: 'left',
                                         padding: '4px 8px',
-                                        background: 'none',
+                                        background: currentSort === 'asc' ? '#f0f0f0' : 'none',
                                         border: 'none',
                                         cursor: 'pointer',
-                                        color: '#ff4d4f',
+                                        borderRadius: '2px',
                                         ...theme.menuItem,
                                     }}
                                 >
-                                    ✕ Clear Sort
+                                    ↑ Sort Ascending
                                 </button>
-                            )}
-                        </div>
-                    )}
+                                <button
+                                    onClick={() => {
+                                        onSort('desc');
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        textAlign: 'left',
+                                        padding: '4px 8px',
+                                        background: currentSort === 'desc' ? '#f0f0f0' : 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        borderRadius: '2px',
+                                        ...theme.menuItem,
+                                    }}
+                                >
+                                    ↓ Sort Descending
+                                </button>
+                                {currentSort && (
+                                    <button
+                                        onClick={() => {
+                                            onSort(null);
+                                            setIsOpen(false);
+                                        }}
+                                        style={{
+                                            textAlign: 'left',
+                                            padding: '4px 8px',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#ff4d4f',
+                                            fontSize: '12px',
+                                            ...theme.menuItem,
+                                        }}
+                                    >
+                                        ✕ Clear Sort
+                                    </button>
+                                )}
+                                <div style={{ borderTop: '1px solid #eee', margin: '4px 0' }} />
+                            </>
+                        )}
+
+                        {onFreeze && (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        onFreeze('left');
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        textAlign: 'left',
+                                        padding: '4px 8px',
+                                        background: column.fixed === 'left' ? '#f0f0f0' : 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        ...theme.menuItem,
+                                    }}
+                                >
+                                    ❄ Freeze Left
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        onFreeze('right');
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        textAlign: 'left',
+                                        padding: '4px 8px',
+                                        background: column.fixed === 'right' ? '#f0f0f0' : 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        ...theme.menuItem,
+                                    }}
+                                >
+                                    ❄ Freeze Right
+                                </button>
+                                {column.fixed && (
+                                    <button
+                                        onClick={() => {
+                                            onFreeze(null);
+                                            setIsOpen(false);
+                                        }}
+                                        style={{
+                                            textAlign: 'left',
+                                            padding: '4px 8px',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#ff4d4f',
+                                            fontSize: '12px',
+                                            ...theme.menuItem,
+                                        }}
+                                    >
+                                        ✕ Unfreeze
+                                    </button>
+                                )}
+                            </>
+                        )}
+                    </div>
 
                     {column.filterable !== false && (
                         <div style={{ borderTop: '1px solid #eee', paddingTop: '8px' }}>

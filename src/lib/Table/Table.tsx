@@ -24,6 +24,7 @@ export const Table = <T extends object>({
     onFilter,
     onCellEdit,
     rowClassName,
+    onColumnUpdate,
     components = {},
 }: TableProps<T>) => {
     const { Row: CustomRow, Header: CustomHeader } = components;
@@ -40,6 +41,19 @@ export const Table = <T extends object>({
     useEffect(() => {
         setColumns(initialColumns);
     }, [initialColumns]);
+
+    const handleFreeze = useCallback((columnKey: string, direction: 'left' | 'right' | null) => {
+        setColumns(prev => {
+            const next = prev.map(col => {
+                if (col.key === columnKey) {
+                    return { ...col, fixed: direction || undefined };
+                }
+                return col;
+            });
+            if (onColumnUpdate) onColumnUpdate(next);
+            return next;
+        });
+    }, [onColumnUpdate]);
 
     const theme = useMemo(() => {
         return {
@@ -150,6 +164,7 @@ export const Table = <T extends object>({
                 onResize={handleResize}
                 onSort={handleSort}
                 onFilter={handleFilter}
+                onFreeze={handleFreeze}
                 sortState={sortState}
                 filters={filters}
             />

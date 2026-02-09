@@ -29,6 +29,7 @@ const columns: Column<User>[] = [
     width: 70,
     align: 'center',
     sortable: true,
+    fixed: 'left',
     headerStyle: { borderLeft: '4px solid #3b82f6' }
   },
   {
@@ -173,7 +174,7 @@ function App() {
 
       <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
         <strong>Current Config:</strong> {mode === 'client' ? 'Client-side processing' : 'Server-side processing (simulated)'}
-        <span style={{ marginLeft: 15, color: '#3b82f6' }}>💡 Headers and Cells now support custom icons and JSX!</span>
+        <span style={{ marginLeft: 15, color: '#3b82f6' }}>❄ Headers and Columns can now be Frozen/Fixed!</span>
       </div>
 
       <style>{`
