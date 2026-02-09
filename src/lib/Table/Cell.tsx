@@ -47,28 +47,71 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
         commitEdit();
     };
 
+    // Auto-open calendar on edit
+    useEffect(() => {
+        if (isEditing && (column.type === 'date' || column.type === 'datetime')) {
+            setShowCalendar(true);
+        }
+    }, [isEditing, column.type]);
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
+            e.preventDefault();
             commitEdit();
+            moveFocus('down');
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            commitEdit();
+            moveFocus(e.shiftKey ? 'left' : 'right');
         } else if (e.key === 'Escape') {
             setIsEditing(false);
             setEditValue(value);
         }
     };
 
+    const moveFocus = (direction: 'left' | 'right' | 'down') => {
+        // Simple DOM navigation. 
+        // Note: This relies on the table structure being rendered consistently.
+        const currentCell = inputRef.current?.closest('td') || document.activeElement?.closest('td');
+        if (!currentCell) return;
+
+        let target: HTMLElement | null = null;
+
+        if (direction === 'right') {
+            target = currentCell.nextElementSibling as HTMLElement;
+        } else if (direction === 'left') {
+            target = currentCell.previousElementSibling as HTMLElement;
+        } else if (direction === 'down') {
+            const currentRow = currentCell.closest('tr');
+            const nextRow = currentRow?.nextElementSibling;
+            if (nextRow) {
+                const index = Array.from(currentRow?.children || []).indexOf(currentCell);
+                if (index !== -1) {
+                    target = nextRow.children[index] as HTMLElement;
+                }
+            }
+        }
+
+        if (target) {
+            target.focus();
+            // Optional: If we want to start editing immediately on nav, we'd need more state control.
+            // For now, just focus.
+        }
+    };
+
     const commitEdit = () => {
         if (isEditing) {
-            // Validate if needed?
             setIsEditing(false);
             if (editValue !== value && onEdit) {
-                // Parse value based on type before committing?
-                // For number input, it's string usually, convert to number
                 let finalValue = editValue;
                 if (column.type === 'number') {
                     finalValue = parseFloat(editValue);
-                } else if (column.type === 'boolean') {
-                    // Checkbox handling might differ
                 }
+
+                if (editValue instanceof Date) {
+                    finalValue = editValue.toISOString();
+                }
+
                 onEdit(record, column.key, finalValue);
             }
         }
@@ -97,38 +140,29 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
     // Calendar State
     const [showCalendar, setShowCalendar] = useState(false);
 
+    // ...
+
     // Render specific input based on type
     const renderInput = () => {
-        if (column.type === 'boolean') {
-            return (
-                <input
-                    type="checkbox"
-                    checked={!!editValue}
-                    onChange={(e) => setEditValue(e.target.checked)}
-                    onBlur={handleBlur}
-                    ref={inputRef}
-                    style={{ cursor: 'pointer' }}
-                />
-            );
-        }
+        // ... boolean ...
 
         if (column.type === 'date' || column.type === 'datetime') {
             return (
                 <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                     <input
                         ref={inputRef}
-                        value={editValue ? new Date(editValue).toLocaleDateString() : ''}
-                        readOnly // Prevent manual typing to force widget usage? Or allow logic?
-                        // Actually let's allow typing if we want, but for now simple readonly with widget
-                        onClick={() => setShowCalendar(true)}
+                        // Allow typing by checking if editValue is valid Date for display, else show raw
+                        value={editValue instanceof Date ? editValue.toLocaleDateString() : editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
                         onBlur={() => {
-                            // Delay blur to allow clicking on calendar
                             setTimeout(() => {
                                 if (!document.activeElement?.closest('.tablez-calendar')) {
                                     handleBlur();
                                 }
                             }, 100);
                         }}
+                        onKeyDown={handleKeyDown}
+                        onClick={() => setShowCalendar(true)}
                         style={{
                             width: '100%',
                             height: '100%',
@@ -179,6 +213,7 @@ const CellInner = <T,>({ record, column, theme, index, onEdit, stickyStyles, sho
 
     return (
         <td
+            tabIndex={0}
             onDoubleClick={handleDoubleClick}
             className={column.className}
             style={{
