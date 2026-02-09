@@ -69,13 +69,10 @@ container.onscroll = (e) => engine.setScrollTop(e.target.scrollTop);
 ```
 
 ### Vue 3 (Composition API)
-You can easily build a Vue adapter using the provided engine utilities.
-
 ```ts
 import { ref, computed } from 'vue';
-import { calculateVirtualization, processData } from '@scorpionmanace/tablez';
+import { calculateVirtualization } from '@scorpionmanace/tablez';
 
-// In your setup():
 const scrollTop = ref(0);
 const virtualization = computed(() => calculateVirtualization({
   scrollTop: scrollTop.value,
@@ -85,8 +82,51 @@ const virtualization = computed(() => calculateVirtualization({
 }));
 ```
 
+### Svelte (Stores)
+```ts
+import { writable, derived } from 'svelte/store';
+import { calculateVirtualization } from '@scorpionmanace/tablez';
+
+const scrollTop = writable(0);
+const virtualization = derived(scrollTop, ($top) => calculateVirtualization({
+  scrollTop: $top,
+  rowHeight: 50,
+  containerHeight: 500,
+  dataLength: myData.length
+}));
+```
+
+### Angular (Signals)
+```ts
+import { signal, computed } from '@angular/core';
+import { calculateVirtualization } from '@scorpionmanace/tablez';
+
+const scrollTop = signal(0);
+const virtualization = computed(() => calculateVirtualization({
+  scrollTop: scrollTop(),
+  rowHeight: 50,
+  containerHeight: 500,
+  dataLength: myData.data.length
+}));
+```
+
 ### React Native
 Since the core logic doesn't use the DOM, you can use it to drive a `FlatList` or custom scroll view in React Native for high-performance tables.
+
+---
+
+## 🔄 Migrating to 0.0.5
+
+The API was reorganized in v0.0.5 to support multi-framework usage and better readability.
+
+| Old Prop | New Prop |
+|----------|----------|
+| `virtualized` | `settings.virtualized` |
+| `rowKey` | `rowSettings.key` |
+| `rowClassName` | `rowSettings.className` |
+| `onRowClick` | `rowSettings.onClick` |
+| `theme` | `settings.theme` |
+| `containerHeight` | `settings.containerHeight` |
 
 ---
 
