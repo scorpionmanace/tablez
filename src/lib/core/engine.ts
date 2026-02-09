@@ -4,6 +4,7 @@ export interface BaseTableSettings {
     mode?: 'client' | 'server';
     loading?: boolean;
     draggableColumns?: boolean;
+    frozenRows?: number;
 }
 
 export interface BaseRowSettings {

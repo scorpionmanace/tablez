@@ -193,21 +193,32 @@ export const Table = <T extends object>({
         return processData(data, filters, sortState, columns as any);
     }, [data, mode, filters, sortState, columns]);
 
+    // Separate Frozen vs Scrolled Data
+    const { frozenData, scrolledData } = useMemo(() => {
+        if (settings.frozenRows && settings.frozenRows > 0) {
+            return {
+                frozenData: processedData.slice(0, settings.frozenRows),
+                scrolledData: processedData.slice(settings.frozenRows)
+            };
+        }
+        return { frozenData: [], scrolledData: processedData };
+    }, [processedData, settings.frozenRows]);
+
     const virtualization = useMemo(() => {
         return calculateVirtualization({
             scrollTop,
             height: rowHeight,
             containerHeight,
-            dataLength: processedData.length,
+            dataLength: scrolledData.length,
             overscan,
             virtualized
         });
-    }, [virtualized, processedData.length, rowHeight, scrollTop, containerHeight, overscan]);
+    }, [virtualized, scrolledData.length, rowHeight, scrollTop, containerHeight, overscan]);
 
     const { startIndex, endIndex, offsetY, bottomOffsetY } = virtualization;
     const visibleData = useMemo(() =>
-        processedData.slice(startIndex, endIndex),
-        [processedData, startIndex, endIndex]);
+        scrolledData.slice(startIndex, endIndex),
+        [scrolledData, startIndex, endIndex]);
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
         if (scrollAnimationFrame.current) {
@@ -253,6 +264,40 @@ export const Table = <T extends object>({
             />
             {virtualized ? (
                 <tbody>
+                    {/* Render Frozen Rows */}
+                    {frozenData.map((record: T, index: number) => {
+                        const key = rowKey
+                            ? typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey]
+                            : `frozen-${index}`;
+
+                        // Calculate sticky top position (Header height approx 40px + prev rows)
+                        // Note: For exact pixel perfection, header height should be dynamic or measured.
+                        // Assuming standard rowHeight for now for frozen rows as well.
+                        const stickyTop = 40 + (index * rowHeight);
+
+                        return (
+                            <RowComponent
+                                key={key}
+                                record={record}
+                                columns={columns}
+                                theme={theme}
+                                onClick={onRowClick}
+                                onCellEdit={onCellEdit}
+                                index={index}
+                                className={rowClassName}
+                                showColumnBorders={showColumnBorders}
+                                height={rowHeight}
+                                style={{
+                                    position: 'sticky',
+                                    top: stickyTop,
+                                    zIndex: 30, // Below header (40), above rows
+                                    backgroundColor: theme.tokens?.backgroundColor || '#fff',
+                                    boxShadow: index === frozenData.length - 1 ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                                }}
+                            />
+                        );
+                    })}
+
                     {offsetY > 0 && (
                         <tr style={{ height: offsetY, border: 'none' }} aria-hidden="true">
                             <td colSpan={columns.length} style={{ padding: 0, border: 'none', height: offsetY }} />
@@ -289,12 +334,13 @@ export const Table = <T extends object>({
                 </tbody>
             ) : (
                 <tbody>
-                    {processedData.map((record: T, index: number) => {
+                    {/* Render Frozen Rows (Non-Virtualized) */}
+                    {frozenData.map((record: T, index: number) => {
                         const key = rowKey
-                            ? typeof rowKey === 'function'
-                                ? rowKey(record)
-                                : (record as any)[rowKey]
-                            : index;
+                            ? typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey]
+                            : `frozen-${index}`;
+
+                        const stickyTop = 40 + (index * rowHeight);
 
                         return (
                             <RowComponent
@@ -307,12 +353,44 @@ export const Table = <T extends object>({
                                 index={index}
                                 className={rowClassName}
                                 showColumnBorders={showColumnBorders}
+                                height={rowHeight}
+                                style={{
+                                    position: 'sticky',
+                                    top: stickyTop,
+                                    zIndex: 30,
+                                    backgroundColor: theme.tokens?.backgroundColor || '#fff',
+                                    boxShadow: index === frozenData.length - 1 ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                                }}
+                            />
+                        );
+                    })}
+
+                    {/* Render Scrolled Data (Non-Virtualized) */}
+                    {scrolledData.map((record: T, index: number) => {
+                        // Offset index by frozen count
+                        const originalIndex = (settings.frozenRows || 0) + index;
+                        const key = rowKey
+                            ? typeof rowKey === 'function' ? rowKey(record) : (record as any)[rowKey]
+                            : originalIndex;
+
+                        return (
+                            <RowComponent
+                                key={key}
+                                record={record}
+                                columns={columns}
+                                theme={theme}
+                                onClick={onRowClick}
+                                onCellEdit={onCellEdit}
+                                index={originalIndex}
+                                className={rowClassName}
+                                showColumnBorders={showColumnBorders}
+                                height={rowHeight}
                             />
                         );
                     })}
                 </tbody>
             )}
-        </table>
+        </table >
     );
 
     const cssVariables = useMemo(() => {

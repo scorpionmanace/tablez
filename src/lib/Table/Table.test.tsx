@@ -229,4 +229,24 @@ describe('Table Component', () => {
             expect(nameHeader).toHaveAttribute('draggable', 'false');
         });
     });
+
+    describe('Frozen Rows', () => {
+        it('renders frozen rows with sticky positioning', () => {
+            const rowData = Array.from({ length: 10 }, (_, i) => ({ id: i, name: `User ${i}` }));
+            render(<Table data={rowData} columns={columns} settings={{ frozenRows: 2, virtualized: false }} />);
+
+            const rows = screen.getAllByRole('row');
+            // Index 0 is header. Rows 1 and 2 should be frozen.
+            const row1 = rows[1];
+            const row2 = rows[2];
+            const row3 = rows[3];
+
+            expect(row1).toHaveStyle({ position: 'sticky' });
+            expect(row2).toHaveStyle({ position: 'sticky' });
+
+            // Row 3 should not be sticky (unless we decide otherwise, but logic implies only first N)
+            // Wait, RowComponent applies style passed. Row 3 is scrolledData, rendered normally.
+            expect(row3).not.toHaveStyle({ position: 'sticky' });
+        });
+    });
 });

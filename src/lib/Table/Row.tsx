@@ -21,15 +21,17 @@ const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, inde
     const [isHovered, setIsHovered] = useState(false);
     const rowClassName = typeof className === 'function' ? className(record, index) : className;
 
+    const isRowSticky = style?.position === 'sticky';
+
     const rowStyle: CSSProperties = useMemo(() => ({
         ...theme.row,
-        backgroundColor: isHovered ? (theme.tokens?.rowHoverColor || '#f1f5f9') : theme.row?.backgroundColor,
-        ...style,
         height: height,
         maxHeight: height,
+        backgroundColor: isHovered ? (theme.tokens?.rowHoverColor || '#f1f5f9') : theme.row?.backgroundColor,
         boxSizing: 'border-box',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'background-color 0.15s ease'
+        transition: 'background-color 0.15s ease',
+        ...style, // Allow style override (e.g. position: sticky)
     }), [theme.row, theme.tokens?.rowHoverColor, isHovered, style, height, onClick]);
 
     // Calculate sticky offsets
@@ -51,8 +53,8 @@ const RowInner = <T,>({ record, columns, theme, onClick, onCellEdit, style, inde
                     position: 'sticky',
                     left: col.fixed === 'left' ? leftOffsets[idx] : undefined,
                     right: col.fixed === 'right' ? rightOffsets[col.key] : undefined,
-                    zIndex: 10,
-                    backgroundColor: theme.cell?.backgroundColor || theme.row?.backgroundColor || '#fff',
+                    zIndex: isRowSticky ? 40 : 20, // Higher for frozen rows
+                    backgroundColor: theme.cell?.backgroundColor || theme.row?.backgroundColor || theme.tokens?.backgroundColor || '#fff',
                 } : {};
 
                 return (

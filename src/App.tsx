@@ -128,6 +128,7 @@ function App() {
   const [showBorders, setShowBorders] = useState(true);
   const [draggable, setDraggable] = useState(true);
   const [currentColumns, setCurrentColumns] = useState(columns);
+  const [frozenRows, setFrozenRows] = useState(0);
 
   // Base dataset state
   const [allData, setAllData] = useState<User[]>(() => {
@@ -247,6 +248,7 @@ function App() {
               <button onClick={() => setVirtualized(!virtualized)}>Virtual: {virtualized ? 'ON' : 'OFF'}</button>
               <button onClick={() => setResizable(!resizable)}>Resizing: {resizable ? 'ON' : 'OFF'}</button>
               <button onClick={() => setDraggable(!draggable)}>Draggable: {draggable ? 'ON' : 'OFF'}</button>
+              <button onClick={() => setFrozenRows(prev => prev === 0 ? 2 : 0)}>Frozen Rows ({frozenRows})</button>
               <button onClick={shuffleColumns} style={{ backgroundColor: '#10b981', color: 'white' }}>🔀 Shuffle Columns</button>
               <button onClick={() => setShowBorders(!showBorders)}>Separators: {showBorders ? 'ON' : 'OFF'}</button>
             </div>
@@ -260,6 +262,7 @@ function App() {
                   theme: useDark ? darkTheme : undefined,
                   resizable,
                   draggableColumns: draggable,
+                  frozenRows,
                   virtualized,
                   mode,
                   loading,
