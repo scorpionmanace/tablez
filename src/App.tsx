@@ -160,6 +160,8 @@ function App() {
   const [showBorders, setShowBorders] = useState(true);
   const [frozenRows, setFrozenRows] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [toolbarEnabled, setToolbarEnabled] = useState(true);
+  const [toolbarPosition, setToolbarPosition] = useState<'top' | 'bottom'>('top');
 
   const [allData, setAllData] = useState<User[]>(() => {
     const roles = ['Admin', 'Editor', 'Viewer', 'Maintainer'];
@@ -386,6 +388,18 @@ function App() {
             Borders: {showBorders ? 'ON' : 'OFF'}
           </button>
           <button
+            onClick={() => setToolbarEnabled(!toolbarEnabled)}
+            style={controlButtonStyle(toolbarEnabled)}
+          >
+            Toolbar: {toolbarEnabled ? 'ON' : 'OFF'}
+          </button>
+          <button
+            onClick={() => setToolbarPosition(toolbarPosition === 'top' ? 'bottom' : 'top')}
+            style={controlButtonStyle(toolbarEnabled)}
+          >
+            Toolbar Pos: {toolbarPosition.toUpperCase()}
+          </button>
+          <button
             onClick={shuffleColumns}
             style={{
               ...controlButtonStyle(false),
@@ -444,6 +458,48 @@ function App() {
                   'hideRow',
                   'hideColumn',
                   'renameColumn',
+                ],
+              },
+              toolbar: {
+                enabled: toolbarEnabled,
+                position: toolbarPosition,
+                items: [
+                  {
+                    key: 'search',
+                    label: 'Filter records...',
+                    style: { maxWidth: '300px' },
+                  },
+                  'separator',
+                  {
+                    key: 'refresh',
+                    label: 'Reload',
+                    icon: (
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M23 4v6h-6" />
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                      </svg>
+                    ),
+                    style: { backgroundColor: '#f0f9ff', color: '#0369a1', borderColor: '#bae6fd' },
+                    onClick: () => {
+                      setLoading(true);
+                      setTimeout(() => setLoading(false), 800);
+                    },
+                  },
+                  'separator',
+                  {
+                    key: 'download',
+                    label: 'Export Data',
+                    style: { fontWeight: 700 },
+                  },
                 ],
               },
             }}

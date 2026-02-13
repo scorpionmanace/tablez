@@ -68,6 +68,8 @@ export interface TableTheme {
   menuItem?: CSSProperties;
   searchInput?: CSSProperties;
   editInput?: CSSProperties;
+  toolbar?: CSSProperties;
+  toolbarButton?: CSSProperties;
 }
 
 import type { BaseTableSettings, BaseRowSettings } from './core/engine';
@@ -100,6 +102,34 @@ export interface TableSettings extends BaseTableSettings {
       shortcut?: string;
     }[];
   };
+  toolbar?: ToolbarSettings;
+}
+
+export interface ToolbarItem<T = any> {
+  key: string;
+  label?: ReactNode;
+  icon?: ReactNode;
+  onClick?: (data: T[], columns: Column<T>[]) => void;
+  render?: (params: {
+    data: T[];
+    columns: Column<T>[];
+    filters: Record<string, string>;
+    theme: TableTheme;
+  }) => ReactNode;
+  disabled?: boolean | ((data: T[], columns: Column<T>[]) => boolean);
+  hidden?: boolean | ((data: T[], columns: Column<T>[]) => boolean);
+  className?: string;
+  style?: CSSProperties;
+  buttonProps?: any; // To allow passing arbitrary button attributes
+}
+
+export interface ToolbarSettings<T = any> {
+  enabled?: boolean;
+  position?: 'top' | 'bottom';
+  items?: (ToolbarItem<T> | 'download' | 'search' | 'separator')[];
+  downloadOptions?: ('csv' | 'xlsx' | 'pdf' | 'tsv')[];
+  className?: string;
+  style?: CSSProperties;
 }
 
 export type ContextMenuDefaultOption =

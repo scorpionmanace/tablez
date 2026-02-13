@@ -104,6 +104,18 @@ export const processData = <T extends Record<string, any>>(
   // Apply filters
   Object.entries(filters).forEach(([key, value]) => {
     if (!value) return;
+    if (key === 'global') {
+      const searchTerms = value.toLowerCase().split(/\s+/).filter(Boolean);
+      result = result.filter((item) => {
+        return searchTerms.every((term) => {
+          return columns.some((col) => {
+            const itemValue = String(item[col.key] ?? '').toLowerCase();
+            return itemValue.includes(term);
+          });
+        });
+      });
+      return;
+    }
     result = result.filter((item) => {
       const itemValue = String(item[key] ?? '').toLowerCase();
       return itemValue.includes(value.toLowerCase());

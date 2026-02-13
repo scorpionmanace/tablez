@@ -14,6 +14,7 @@ import type {
 import { Header } from '../Header/Header';
 import { Row } from './Row';
 import { ContextMenu, DEFAULT_SHORTCUTS } from './ContextMenu';
+import { Toolbar } from './Toolbar';
 import { defaultTheme } from '../Theme/theme';
 import { calculateVirtualization, processData } from '../core/engine';
 
@@ -599,105 +600,172 @@ export const Table = <T extends Record<string, any>>({
 
   return (
     <div
-      ref={scrollContainerRef}
-      onScroll={handleScroll}
-      className={`tablez-container ${className ?? ''}`}
+      className="tablez-wrapper"
       style={{
+        display: 'flex',
+        flexDirection: 'column',
         height: containerHeight,
-        overflow: 'auto',
-        position: 'relative',
+        border: `1px solid ${theme.tokens?.borderColor ?? '#e2e8f0'}`,
+        borderRadius: theme.tokens?.borderRadius ?? '6px',
+        overflow: 'hidden', // Contain the scroll container
         ...style,
       }}
     >
-      <table
-        className={className}
+      {!!settings.toolbar?.enabled && (settings.toolbar?.position ?? 'top') === 'top' && (
+        <Toolbar
+          data={processedData}
+          columns={columns}
+          settings={settings.toolbar}
+          theme={theme}
+          onFilter={handleFilter}
+          filters={filters}
+        />
+      )}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className={`tablez-container ${className ?? ''}`}
         style={{
-          ...theme.table,
-          opacity: loading ? 0.6 : 1,
-          tableLayout: 'fixed',
-          width: totalWidth,
-          minWidth: '100%',
-          borderCollapse: 'collapse',
+          flex: 1,
+          overflow: 'auto',
+          position: 'relative',
         }}
       >
-        <HeaderComponent
-          columns={columns}
-          theme={theme}
-          resizable={resizable}
-          onResize={handleResize}
-          onSort={handleSort}
-          onFilter={handleFilter}
-          onFreeze={handleFreeze}
-          sortState={sortState}
-          filters={filters}
-          showColumnBorders={showColumnBorders}
-          draggableColumns={draggableColumns}
-          onReorder={handleReorder}
-          onColumnUpdate={(newCols: Column<T>[]) => {
-            setColumns(newCols);
-            if (onColumnUpdate) onColumnUpdate(newCols);
-            setEditingHeaderKey(null);
+        <table
+          className={className}
+          style={{
+            ...theme.table,
+            opacity: loading ? 0.6 : 1,
+            tableLayout: 'fixed',
+            width: totalWidth,
+            minWidth: '100%',
+            borderCollapse: 'collapse',
           }}
-          managedEditingKey={editingHeaderKey}
-        />
-        <tbody>
-          {/* Frozen Rows */}
-          {frozenData.map((record: T, idx: number) => {
-            const key = rowKey
-              ? typeof rowKey === 'function'
-                ? rowKey(record)
-                : record[rowKey]
-              : `frozen-${idx}`;
+        >
+          <HeaderComponent
+            columns={columns}
+            theme={theme}
+            resizable={resizable}
+            onResize={handleResize}
+            onSort={handleSort}
+            onFilter={handleFilter}
+            onFreeze={handleFreeze}
+            sortState={sortState}
+            filters={filters}
+            showColumnBorders={showColumnBorders}
+            draggableColumns={draggableColumns}
+            onReorder={handleReorder}
+            onColumnUpdate={(newCols: Column<T>[]) => {
+              setColumns(newCols);
+              if (onColumnUpdate) onColumnUpdate(newCols);
+              setEditingHeaderKey(null);
+            }}
+            managedEditingKey={editingHeaderKey}
+          />
+          <tbody>
+            {/* Frozen Rows */}
+            {frozenData.map((record: T, idx: number) => {
+              const key = rowKey
+                ? typeof rowKey === 'function'
+                  ? rowKey(record)
+                  : record[rowKey]
+                : `frozen-${idx}`;
 
-            const stickyTop = 40 + idx * rowHeight;
-            const rReadOnly =
-              typeof rowSettings?.readOnly === 'function'
-                ? rowSettings.readOnly(record)
-                : !!rowSettings?.readOnly;
-            const rDisabled =
-              typeof rowSettings?.disabled === 'function'
-                ? rowSettings.disabled(record)
-                : !!rowSettings?.disabled;
+              const stickyTop = 40 + idx * rowHeight;
+              const rReadOnly =
+                typeof rowSettings?.readOnly === 'function'
+                  ? rowSettings.readOnly(record)
+                  : !!rowSettings?.readOnly;
+              const rDisabled =
+                typeof rowSettings?.disabled === 'function'
+                  ? rowSettings.disabled(record)
+                  : !!rowSettings?.disabled;
 
-            return (
-              <RowComponent
-                key={key}
-                record={record}
-                columns={columns}
-                theme={theme}
-                onClick={onRowClick}
-                onCellEdit={onCellEdit}
-                onContextMenu={onContextMenu}
-                onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
-                index={idx}
-                className={rowClassName}
-                showColumnBorders={showColumnBorders}
-                height={rowHeight}
-                readOnly={rReadOnly}
-                disabled={rDisabled}
-                style={{
-                  position: 'sticky',
-                  top: stickyTop,
-                  zIndex: 30,
-                  backgroundColor: theme.tokens?.backgroundColor ?? '#fff',
-                  boxShadow: idx === frozenData.length - 1 ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
-                }}
-              />
-            );
-          })}
+              return (
+                <RowComponent
+                  key={key}
+                  record={record}
+                  columns={columns}
+                  theme={theme}
+                  onClick={onRowClick}
+                  onCellEdit={onCellEdit}
+                  onContextMenu={onContextMenu}
+                  onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
+                  index={idx}
+                  className={rowClassName}
+                  showColumnBorders={showColumnBorders}
+                  height={rowHeight}
+                  readOnly={rReadOnly}
+                  disabled={rDisabled}
+                  style={{
+                    position: 'sticky',
+                    top: stickyTop,
+                    zIndex: 30,
+                    backgroundColor: theme.tokens?.backgroundColor ?? '#fff',
+                    boxShadow: idx === frozenData.length - 1 ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                />
+              );
+            })}
 
-          {virtualized ? (
-            <>
-              {offsetY > 0 && (
-                <tr style={{ height: offsetY, border: 'none' }} aria-hidden="true">
-                  <td
-                    colSpan={columns.length}
-                    style={{ padding: 0, border: 'none', height: offsetY }}
-                  />
-                </tr>
-              )}
-              {visibleData.map((record: T, idx: number) => {
-                const originalIndex = startIndex + idx;
+            {virtualized ? (
+              <>
+                {offsetY > 0 && (
+                  <tr style={{ height: offsetY, border: 'none' }} aria-hidden="true">
+                    <td
+                      colSpan={columns.length}
+                      style={{ padding: 0, border: 'none', height: offsetY }}
+                    />
+                  </tr>
+                )}
+                {visibleData.map((record: T, idx: number) => {
+                  const originalIndex = startIndex + idx;
+                  const key = rowKey
+                    ? typeof rowKey === 'function'
+                      ? rowKey(record)
+                      : record[rowKey]
+                    : originalIndex;
+
+                  const rReadOnly =
+                    typeof rowSettings?.readOnly === 'function'
+                      ? rowSettings.readOnly(record)
+                      : !!rowSettings?.readOnly;
+                  const rDisabled =
+                    typeof rowSettings?.disabled === 'function'
+                      ? rowSettings.disabled(record)
+                      : !!rowSettings?.disabled;
+
+                  return (
+                    <RowComponent
+                      key={key}
+                      record={record}
+                      columns={columns}
+                      theme={theme}
+                      onClick={onRowClick}
+                      onCellEdit={onCellEdit}
+                      onContextMenu={onContextMenu}
+                      onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
+                      index={originalIndex}
+                      className={rowClassName}
+                      showColumnBorders={showColumnBorders}
+                      height={rowHeight}
+                      readOnly={rReadOnly}
+                      disabled={rDisabled}
+                    />
+                  );
+                })}
+                {bottomOffsetY > 0 && (
+                  <tr style={{ height: bottomOffsetY, border: 'none' }} aria-hidden="true">
+                    <td
+                      colSpan={columns.length}
+                      style={{ padding: 0, border: 'none', height: bottomOffsetY }}
+                    />
+                  </tr>
+                )}
+              </>
+            ) : (
+              scrolledData.map((record: T, idx: number) => {
+                const originalIndex = (settings.frozenRows ?? 0) + idx;
                 const key = rowKey
                   ? typeof rowKey === 'function'
                     ? rowKey(record)
@@ -731,89 +799,54 @@ export const Table = <T extends Record<string, any>>({
                     disabled={rDisabled}
                   />
                 );
-              })}
-              {bottomOffsetY > 0 && (
-                <tr style={{ height: bottomOffsetY, border: 'none' }} aria-hidden="true">
-                  <td
-                    colSpan={columns.length}
-                    style={{ padding: 0, border: 'none', height: bottomOffsetY }}
-                  />
-                </tr>
-              )}
-            </>
-          ) : (
-            scrolledData.map((record: T, idx: number) => {
-              const originalIndex = (settings.frozenRows ?? 0) + idx;
-              const key = rowKey
-                ? typeof rowKey === 'function'
-                  ? rowKey(record)
-                  : record[rowKey]
-                : originalIndex;
+              })
+            )}
+          </tbody>
+        </table>
 
-              const rReadOnly =
-                typeof rowSettings?.readOnly === 'function'
-                  ? rowSettings.readOnly(record)
-                  : !!rowSettings?.readOnly;
-              const rDisabled =
-                typeof rowSettings?.disabled === 'function'
-                  ? rowSettings.disabled(record)
-                  : !!rowSettings?.disabled;
-
-              return (
-                <RowComponent
-                  key={key}
-                  record={record}
-                  columns={columns}
-                  theme={theme}
-                  onClick={onRowClick}
-                  onCellEdit={onCellEdit}
-                  onContextMenu={onContextMenu}
-                  onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
-                  index={originalIndex}
-                  className={rowClassName}
-                  showColumnBorders={showColumnBorders}
-                  height={rowHeight}
-                  readOnly={rReadOnly}
-                  disabled={rDisabled}
-                />
-              );
-            })
+        {!!contextMenuState.visible &&
+          !!contextMenuState.record &&
+          !!contextMenuState.column &&
+          createPortal(
+            <ContextMenu
+              x={contextMenuState.x}
+              y={contextMenuState.y}
+              record={contextMenuState.record}
+              column={contextMenuState.column}
+              items={mergedItems}
+              onAction={onContextMenuAction}
+              onClose={() => setContextMenuState((prev) => ({ ...prev, visible: false }))}
+              theme={theme}
+              isReadOnly={
+                (typeof rowSettings?.readOnly === 'function'
+                  ? rowSettings.readOnly(contextMenuState.record)
+                  : !!rowSettings?.readOnly) ||
+                (typeof contextMenuState.column.readOnly === 'function'
+                  ? contextMenuState.column.readOnly(contextMenuState.record)
+                  : !!contextMenuState.column.readOnly)
+              }
+              isDisabled={
+                (typeof rowSettings?.disabled === 'function'
+                  ? rowSettings.disabled(contextMenuState.record)
+                  : !!rowSettings?.disabled) ||
+                (typeof contextMenuState.column.disabled === 'function'
+                  ? contextMenuState.column.disabled(contextMenuState.record)
+                  : !!contextMenuState.column.disabled)
+              }
+            />,
+            document.body,
           )}
-        </tbody>
-      </table>
-
-      {!!contextMenuState.visible &&
-        !!contextMenuState.record &&
-        !!contextMenuState.column &&
-        createPortal(
-          <ContextMenu
-            x={contextMenuState.x}
-            y={contextMenuState.y}
-            record={contextMenuState.record}
-            column={contextMenuState.column}
-            items={mergedItems}
-            onAction={onContextMenuAction}
-            onClose={() => setContextMenuState((prev) => ({ ...prev, visible: false }))}
-            theme={theme}
-            isReadOnly={
-              (typeof rowSettings?.readOnly === 'function'
-                ? rowSettings.readOnly(contextMenuState.record)
-                : !!rowSettings?.readOnly) ||
-              (typeof contextMenuState.column.readOnly === 'function'
-                ? contextMenuState.column.readOnly(contextMenuState.record)
-                : !!contextMenuState.column.readOnly)
-            }
-            isDisabled={
-              (typeof rowSettings?.disabled === 'function'
-                ? rowSettings.disabled(contextMenuState.record)
-                : !!rowSettings?.disabled) ||
-              (typeof contextMenuState.column.disabled === 'function'
-                ? contextMenuState.column.disabled(contextMenuState.record)
-                : !!contextMenuState.column.disabled)
-            }
-          />,
-          document.body,
-        )}
+      </div>
+      {!!settings.toolbar?.enabled && settings.toolbar?.position === 'bottom' && (
+        <Toolbar
+          data={processedData}
+          columns={columns}
+          settings={settings.toolbar}
+          theme={theme}
+          onFilter={handleFilter}
+          filters={filters}
+        />
+      )}
     </div>
   );
 };
