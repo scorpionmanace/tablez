@@ -103,6 +103,15 @@ export interface TableSettings extends BaseTableSettings {
     }[];
   };
   toolbar?: ToolbarSettings;
+  treeSettings?: TreeSettings;
+}
+
+export interface TreeSettings<T = any> {
+  enabled?: boolean;
+  childrenKey?: keyof T | string; // key that contains child rows
+  indentSize?: number; // px per level
+  expandColumnKey?: string; // column key to show expansion toggle
+  defaultExpanded?: boolean;
 }
 
 export interface ToolbarItem<T = any> {

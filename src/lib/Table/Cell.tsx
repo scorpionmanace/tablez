@@ -17,6 +17,12 @@ interface CellProps<T> {
   showColumnBorders?: boolean;
   rowReadOnly?: boolean;
   rowDisabled?: boolean;
+  isTreeExpander?: boolean;
+  treeDepth?: number;
+  isExpanded?: boolean;
+  hasChildren?: boolean;
+  onToggleTree?: () => void;
+  treeSettings?: any;
 }
 
 const CellInner = <T extends Record<string, any>>({
@@ -31,6 +37,12 @@ const CellInner = <T extends Record<string, any>>({
   showColumnBorders,
   rowReadOnly,
   rowDisabled,
+  isTreeExpander,
+  treeDepth,
+  isExpanded,
+  hasChildren,
+  onToggleTree,
+  treeSettings,
 }: CellProps<T>) => {
   const value = record[column.key];
   const [isEditing, setIsEditing] = useState(false);
@@ -157,23 +169,66 @@ const CellInner = <T extends Record<string, any>>({
   };
 
   const renderValue = () => {
-    if (column.render) return column.render(value, record, index);
+    const rawValue = column.render
+      ? column.render(value, record, index)
+      : formatValue(value, column.type, column.format);
 
-    if (isImageResult(value)) {
+    const content = isImageResult(value) ? (
+      <img
+        src={value.url}
+        alt={value.alt ?? ''}
+        style={{
+          maxWidth: value.width ?? '100%',
+          maxHeight: value.height ?? '100%',
+          objectFit: 'contain',
+        }}
+      />
+    ) : (
+      rawValue
+    );
+
+    if (isTreeExpander) {
       return (
-        <img
-          src={value.url}
-          alt={value.alt ?? ''}
-          style={{
-            maxWidth: value.width ?? '100%',
-            maxHeight: value.height ?? '100%',
-            objectFit: 'contain',
-          }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <div style={{ width: (treeDepth ?? 0) * (treeSettings?.indentSize ?? 20) }} />
+          {hasChildren ? (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleTree?.();
+              }}
+              style={{
+                cursor: 'pointer',
+                marginRight: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'transform 0.2s',
+                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                color: theme.tokens?.primaryColor ?? '#3b82f6',
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </span>
+          ) : (
+            <span style={{ width: '20px' }} />
+          )}
+          <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{content}</div>
+        </div>
       );
     }
 
-    return formatValue(value, column.type, column.format);
+    return content;
   };
 
   const renderInput = () => {

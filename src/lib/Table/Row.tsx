@@ -19,6 +19,8 @@ interface RowProps<T> {
   height?: number;
   readOnly?: boolean;
   disabled?: boolean;
+  onToggle?: (record: T) => void;
+  treeSettings?: any; // Avoiding circular dependency if possible, or use import type
 }
 
 const RowInner = <T extends Record<string, any>>({
@@ -36,6 +38,8 @@ const RowInner = <T extends Record<string, any>>({
   height,
   readOnly,
   disabled,
+  onToggle,
+  treeSettings,
 }: RowProps<T>) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -65,6 +69,15 @@ const RowInner = <T extends Record<string, any>>({
   // Calculate sticky offsets
   const { leftOffsets, rightOffsets } = useMemo(() => calculateColumnOffsets(columns), [columns]);
 
+  // Tree logic: which column is the expander?
+  const expandColumnKey = useMemo(() => {
+    if (treeSettings?.expandColumnKey) return treeSettings.expandColumnKey;
+    // Default to the first fixed-left column if exists, else first column
+    const firstFixedLeft = columns.find((c) => c.fixed === 'left');
+    if (firstFixedLeft) return firstFixedLeft.key;
+    return columns[0]?.key;
+  }, [columns, treeSettings]);
+
   return (
     <tr
       className={rowClassName}
@@ -93,6 +106,8 @@ const RowInner = <T extends Record<string, any>>({
             }
           : {};
 
+        const isTreeExpander = treeSettings?.enabled && col.key === expandColumnKey;
+
         return (
           <Cell
             key={col.key || idx}
@@ -107,6 +122,12 @@ const RowInner = <T extends Record<string, any>>({
             showColumnBorders={showColumnBorders}
             rowReadOnly={readOnly}
             rowDisabled={disabled}
+            isTreeExpander={isTreeExpander}
+            treeDepth={(record as any).__level}
+            isExpanded={(record as any).__expanded}
+            hasChildren={(record as any).__hasChildren}
+            onToggleTree={() => onToggle?.(record)}
+            treeSettings={treeSettings}
           />
         );
       })}

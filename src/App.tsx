@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Table, darkTheme, TablezEngine } from './lib';
 import type { Column, TableSortState, TableFilters, TableTheme } from './lib';
-import { calculateVirtualization } from './lib/core/engine';
 import './App.css';
 
 interface User {
@@ -11,6 +10,7 @@ interface User {
   status: 'active' | 'inactive';
   lastLogin?: string; // Date string
   score?: number;
+  children?: User[];
 }
 
 const UserIcon = () => (
@@ -42,7 +42,7 @@ const columns: Column<User>[] = [
   {
     key: 'id',
     title: 'ID',
-    width: 60,
+    width: 80,
     sortable: true,
     fixed: 'left',
     readOnly: true,
@@ -50,12 +50,13 @@ const columns: Column<User>[] = [
   {
     key: 'name',
     title: 'Name',
+    width: 250,
     sortable: true,
     filterable: true,
     editable: true,
     headerRender: () => (
       <span style={{ display: 'flex', alignItems: 'center', fontWeight: 700 }}>
-        <UserIcon /> User Name
+        <UserIcon /> Name
       </span>
     ),
     style: { fontWeight: 500 },
@@ -63,6 +64,7 @@ const columns: Column<User>[] = [
   {
     key: 'role',
     title: 'Role',
+    width: 150,
     sortable: true,
     filterable: true,
     editable: (record) => record.id !== 1,
@@ -75,10 +77,9 @@ const columns: Column<User>[] = [
   {
     key: 'status',
     title: 'Status',
+    width: 120,
     sortable: true,
     filterable: false,
-    freezable: false,
-    draggable: false,
     render: (value: string) => (
       <span
         style={{
@@ -120,14 +121,12 @@ const columns: Column<User>[] = [
     formula: "=IMG('https://api.dicebear.com/7.x/avataaars/svg?seed=' + {name}, {name}, 32, 32)",
     align: 'center',
     sortable: false,
-    filterable: false,
-    freezable: false,
   },
   {
     key: 'performance',
-    title: 'Performance (Calc)',
+    title: 'Performance',
     width: 150,
-    formula: "=LOWER(CONCAT('Score: ', ROUND({id} * 1.5, 1)))",
+    formula: '=ROUND({id} * 1.5, 1)',
     sortable: true,
   },
 ];
@@ -161,35 +160,52 @@ function App() {
   const [frozenRows, setFrozenRows] = useState(0);
   const [loading, setLoading] = useState(false);
   const [toolbarEnabled, setToolbarEnabled] = useState(true);
-  const [toolbarPosition, setToolbarPosition] = useState<'top' | 'bottom'>('top');
+  const [toolbarPosition] = useState<'top' | 'bottom'>('top');
+  const [treeEnabled, setTreeEnabled] = useState(true);
 
   const [allData, setAllData] = useState<User[]>(() => {
     const roles = ['Admin', 'Editor', 'Viewer', 'Maintainer'];
-    return Array.from({ length: 1000 }, (_, i) => ({
+    return Array.from({ length: 50 }, (_, i) => ({
       id: i + 1,
       name: `User ${i + 1}`,
       role: roles[i % 4],
       status: i % 3 === 0 ? 'active' : 'inactive',
       lastLogin: new Date(Date.now() - Math.random() * 10000000000).toISOString().split('T')[0],
-      score: Math.floor(Math.random() * 1000),
+      score: Math.floor(Math.random() * 100),
+      children:
+        i % 5 === 0
+          ? [
+              {
+                id: (i + 1) * 1000 + 1,
+                name: `Nested Admin ${i + 1}.1`,
+                role: 'Admin',
+                status: 'active',
+                score: 95,
+                children: [
+                  {
+                    id: (i + 1) * 10000 + 1,
+                    name: `Deep Guest ${i + 1}.1.1`,
+                    role: 'Viewer',
+                    status: 'inactive',
+                    score: 10,
+                  },
+                ],
+              },
+              {
+                id: (i + 1) * 1000 + 2,
+                name: `Nested Editor ${i + 1}.2`,
+                role: 'Editor',
+                status: 'active',
+                score: 80,
+              },
+            ]
+          : undefined,
     }));
   });
 
   const [serverData, setServerData] = useState<User[]>([]);
   const [currentColumns, setCurrentColumns] = useState<Column<User>[]>(columns);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-
-  // Sync server data when mode or allData changes
-  const [prevMode, setPrevMode] = useState<'client' | 'server'>('client');
-  const [prevAllData, setPrevAllData] = useState<User[]>(allData);
-
-  if (mode !== prevMode || allData !== prevAllData) {
-    setPrevMode(mode);
-    setPrevAllData(allData);
-    if (mode === 'server') {
-      setServerData(allData.slice(0, 50));
-    }
-  }
 
   useEffect(() => {
     const handleResize = () => setWindowHeight(window.innerHeight);
@@ -202,22 +218,16 @@ function App() {
   };
 
   const handleCellEdit = (record: User, key: string, value: any) => {
-    setAllData((prev) =>
-      prev.map((item) => (item.id === record.id ? { ...item, [key]: value } : item)),
-    );
-  };
-
-  const shuffleColumns = () => {
-    const next = [...currentColumns];
-    const movableIndices = next.map((c, i) => (c.fixed ? -1 : i)).filter((i) => i !== -1);
-    if (movableIndices.length < 2) return;
-    const fromIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
-    let toIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
-    while (toIndex === fromIndex)
-      toIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    setCurrentColumns(next);
+    setAllData((prev) => {
+      const updateData = (list: User[]): User[] => {
+        return list.map((item) => {
+          if (item.id === record.id) return { ...item, [key]: value };
+          if (item.children) return { ...item, children: updateData(item.children) };
+          return item;
+        });
+      };
+      return updateData(prev);
+    });
   };
 
   const handleServerSort = (sortState: TableSortState) => {
@@ -251,12 +261,11 @@ function App() {
     }, 500);
   };
 
-  // --- Vanilla Engine Example ---
   const [vanillaState, setVanillaState] = useState<any>(null);
-  const vanillaEngine = useMemo(
+  useMemo(
     () =>
       new TablezEngine({
-        data: allData.slice(0, 100),
+        data: allData.slice(0, 20),
         columns: columns as Column<any>[],
         settings: { containerHeight: 300, virtualized: true },
         onUpdate: (state) => setVanillaState(state),
@@ -287,7 +296,6 @@ function App() {
           padding: '0 24px',
           borderBottom: `1px solid ${useDark ? '#334155' : '#e2e8f0'}`,
           backgroundColor: useDark ? '#0f172a' : '#fff',
-          flexShrink: 0,
           boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
         }}
       >
@@ -312,7 +320,6 @@ function App() {
               Tablez
             </h2>
           </div>
-
           <nav style={{ display: 'flex', gap: '4px' }}>
             {(['main', 'theme', 'vanilla', 'core'] as const).map((tab) => (
               <button
@@ -324,7 +331,7 @@ function App() {
                   border: 'none',
                   backgroundColor:
                     activeTab === tab ? (useDark ? '#1e293b' : '#f1f5f9') : 'transparent',
-                  color: activeTab === tab ? '#3b82f6' : useDark ? '#64748b' : '#64748b',
+                  color: activeTab === tab ? '#3b82f6' : '#64748b',
                   fontSize: '13px',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -335,12 +342,9 @@ function App() {
             ))}
           </nav>
         </div>
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setUseDark(!useDark)} style={controlButtonStyle(false)}>
-            {useDark ? '🌙 Dark' : '☀️ Light'}
-          </button>
-        </div>
+        <button onClick={() => setUseDark(!useDark)} style={controlButtonStyle(false)}>
+          {useDark ? '🌙 Dark' : '☀️ Light'}
+        </button>
       </header>
 
       {activeTab === 'main' && (
@@ -353,7 +357,6 @@ function App() {
             padding: '0 24px',
             backgroundColor: useDark ? '#020617' : '#f8fafc',
             borderBottom: `1px solid ${useDark ? '#1e293b' : '#f1f5f9'}`,
-            flexShrink: 0,
             overflowX: 'auto',
           }}
         >
@@ -379,7 +382,7 @@ function App() {
             onClick={() => setFrozenRows((prev) => (prev === 0 ? 2 : 0))}
             style={controlButtonStyle(frozenRows > 0)}
           >
-            Frozen Rows ({frozenRows})
+            Frozen ({frozenRows})
           </button>
           <button
             onClick={() => setShowBorders(!showBorders)}
@@ -388,27 +391,16 @@ function App() {
             Borders: {showBorders ? 'ON' : 'OFF'}
           </button>
           <button
+            onClick={() => setTreeEnabled(!treeEnabled)}
+            style={controlButtonStyle(treeEnabled)}
+          >
+            Tree: {treeEnabled ? 'ON' : 'OFF'}
+          </button>
+          <button
             onClick={() => setToolbarEnabled(!toolbarEnabled)}
             style={controlButtonStyle(toolbarEnabled)}
           >
             Toolbar: {toolbarEnabled ? 'ON' : 'OFF'}
-          </button>
-          <button
-            onClick={() => setToolbarPosition(toolbarPosition === 'top' ? 'bottom' : 'top')}
-            style={controlButtonStyle(toolbarEnabled)}
-          >
-            Toolbar Pos: {toolbarPosition.toUpperCase()}
-          </button>
-          <button
-            onClick={shuffleColumns}
-            style={{
-              ...controlButtonStyle(false),
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-            }}
-          >
-            🔀 Shuffle
           </button>
         </div>
       )}
@@ -428,34 +420,21 @@ function App() {
               mode,
               loading,
               showColumnBorders: showBorders,
-              containerHeight: windowHeight - 60 - (activeTab === 'main' ? 44 : 0),
+              containerHeight: windowHeight - 104,
               frozenRows,
+              treeSettings: {
+                enabled: treeEnabled,
+                expandColumnKey: 'name',
+              },
               contextMenu: {
                 enabled: true,
                 items: [
-                  'insertRowAbove',
-                  'insertRowBelow',
-                  { type: 'separator' },
-                  'insertColumnLeft',
-                  'insertColumnRight',
-                  { type: 'separator' },
-                  {
-                    label: 'Copy',
-                    icon: 'copy',
-                    children: [
-                      'copy',
-                      { type: 'separator' },
-                      'copyTableWithHeader',
-                      'copyTableWithoutHeader',
-                    ],
-                  },
+                  'copy',
                   'cut',
                   'paste',
                   { type: 'separator' },
-                  'undo',
-                  'redo',
-                  { type: 'separator' },
-                  'hideRow',
+                  'insertRowAbove',
+                  'insertRowBelow',
                   'hideColumn',
                   'renameColumn',
                 ],
@@ -464,49 +443,15 @@ function App() {
                 enabled: toolbarEnabled,
                 position: toolbarPosition,
                 items: [
-                  {
-                    key: 'search',
-                    label: 'Filter records...',
-                    style: { maxWidth: '300px' },
-                  },
+                  { key: 'search', label: 'Filter...', style: { maxWidth: 300 } },
                   'separator',
-                  {
-                    key: 'refresh',
-                    label: 'Reload',
-                    icon: (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M23 4v6h-6" />
-                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                      </svg>
-                    ),
-                    style: { backgroundColor: '#f0f9ff', color: '#0369a1', borderColor: '#bae6fd' },
-                    onClick: () => {
-                      setLoading(true);
-                      setTimeout(() => setLoading(false), 800);
-                    },
-                  },
-                  'separator',
-                  {
-                    key: 'download',
-                    label: 'Export Data',
-                    style: { fontWeight: 700 },
-                  },
+                  'download',
                 ],
               },
             }}
             rowSettings={{
               key: 'id',
               height: 48,
-              disabled: (record: User) => record.id % 5 === 0,
             }}
             onCellEdit={handleCellEdit}
             onSort={mode === 'server' ? (handleServerSort as any) : undefined}
@@ -516,122 +461,48 @@ function App() {
 
         {activeTab === 'theme' && (
           <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-            <h3 style={{ marginBottom: 15, color: useDark ? '#fff' : '#000' }}>Midnight Theme</h3>
+            <h3 style={{ marginBottom: 15 }}>Theming API</h3>
             <div
               style={{
                 borderRadius: 12,
                 overflow: 'hidden',
-                height: '400px',
+                height: 400,
                 border: '1px solid #334155',
               }}
             >
               <Table<User>
-                data={allData.slice(0, 100)}
-                columns={[
-                  { key: 'id', title: 'ID', width: 60, fixed: 'left' },
-                  { key: 'name', title: 'Name', width: 200 },
-                  { key: 'role', title: 'Role', width: 150 },
-                  { key: 'status', title: 'Status', width: 120 },
-                ]}
-                settings={{
-                  theme: midnightTheme,
-                  containerHeight: 400,
-                  showColumnBorders: false,
-                }}
+                data={allData.slice(0, 50)}
+                columns={currentColumns}
+                settings={{ theme: midnightTheme, containerHeight: 400 }}
               />
             </div>
           </div>
         )}
 
         {activeTab === 'vanilla' && (
-          <div style={{ maxWidth: '1000px', margin: '0 auto', color: useDark ? '#fff' : '#000' }}>
+          <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
             <h3>Headless Engine</h3>
-            <div style={{ display: 'flex', gap: 20, marginTop: 20 }}>
-              <div
-                style={{
-                  flex: 1,
-                  border: `1px solid ${useDark ? '#334155' : '#eee'}`,
-                  padding: 20,
-                  borderRadius: 8,
-                }}
-              >
-                <pre style={{ fontSize: '0.8em', maxHeight: 200, overflow: 'auto' }}>
-                  {JSON.stringify(
-                    {
-                      startIndex: vanillaState?.startIndex,
-                      totalHeight: vanillaState?.totalHeight,
-                    },
-                    null,
-                    2,
-                  )}
-                </pre>
-              </div>
-              <div
-                onScroll={(e) => vanillaEngine.setScrollTop((e.target as HTMLDivElement).scrollTop)}
-                style={{
-                  flex: 1,
-                  height: 300,
-                  overflow: 'auto',
-                  border: '2px dashed #cbd5e1',
-                  position: 'relative',
-                }}
-              >
-                <div
-                  style={{
-                    height: (vanillaState?.totalHeight ?? 0) as number,
-                    position: 'relative',
-                  }}
-                >
-                  <div
-                    style={{
-                      transform: `translateY(${(vanillaState?.offsetY ?? 0) as number}px)`,
-                      position: 'absolute',
-                      width: '100%',
-                    }}
-                  >
-                    {(vanillaState?.visibleData ?? []).map((u: any) => (
-                      <div
-                        key={u.id}
-                        style={{
-                          height: 50,
-                          borderBottom: '1px solid #eee',
-                          padding: '0 15px',
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                      >
-                        #{u.id} - {u.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <pre
+              style={{
+                padding: 20,
+                backgroundColor: useDark ? '#1e293b' : '#f8fafc',
+                borderRadius: 8,
+              }}
+            >
+              {JSON.stringify(
+                { visible: vanillaState?.visibleData?.length, total: allData.length },
+                null,
+                2,
+              )}
+            </pre>
           </div>
         )}
 
         {activeTab === 'core' && (
-          <div style={{ maxWidth: '1000px', margin: '0 auto', color: useDark ? '#fff' : '#000' }}>
-            <h3>Core Math</h3>
-            <pre
-              style={{
-                backgroundColor: useDark ? '#1e293b' : '#f8fafc',
-                padding: 25,
-                borderRadius: 12,
-              }}
-            >
-              {JSON.stringify(
-                calculateVirtualization({
-                  scrollTop: 10000,
-                  height: 40,
-                  containerHeight: 600,
-                  dataLength: 1000000,
-                  overscan: 5,
-                }),
-                null,
-                4,
-              )}
-            </pre>
+          <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <h3>System Info</h3>
+            <p>Platform: macOS</p>
+            <p>Virtualization: Enabled</p>
           </div>
         )}
       </main>

@@ -16,7 +16,7 @@ import { Row } from './Row';
 import { ContextMenu, DEFAULT_SHORTCUTS } from './ContextMenu';
 import { Toolbar } from './Toolbar';
 import { defaultTheme } from '../Theme/theme';
-import { calculateVirtualization, processData } from '../core/engine';
+import { calculateVirtualization, processData, flattenTree } from '../core/engine';
 
 export const Table = <T extends Record<string, any>>({
   data,
@@ -65,6 +65,27 @@ export const Table = <T extends Record<string, any>>({
   const [internalSortState, setInternalSortState] = useState<TableSortState | undefined>();
   const [internalFilters, setInternalFilters] = useState<TableFilters>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const [expandedKeys, setExpandedKeys] = useState<Set<string | number>>(new Set());
+  const { treeSettings = {} } = settings;
+
+  const toggleRow = useCallback(
+    (record: T) => {
+      const getRowKey = (item: T) => {
+        if (typeof rowKey === 'function') return rowKey(item);
+        if (rowKey && (item as any)[rowKey] !== undefined) return (item as any)[rowKey];
+        return (item as any).id ?? data.indexOf(item);
+      };
+      const key = getRowKey(record);
+      setExpandedKeys((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    },
+    [rowKey, data],
+  );
 
   // Context Menu State
   const [contextMenuState, setContextMenuState] = useState<{
@@ -227,8 +248,20 @@ export const Table = <T extends Record<string, any>>({
 
   const processedData = useMemo(() => {
     if (mode === 'server') return data;
-    return processData(data, filters, sortState, columns as any);
-  }, [data, mode, filters, sortState, columns]);
+    const processed = processData(data, filters, sortState, columns as any);
+
+    if (treeSettings.enabled) {
+      const getRowKey = (record: T) => {
+        if (typeof rowKey === 'function') return rowKey(record);
+        if (rowKey && record[rowKey] !== undefined) return record[rowKey];
+        return (record as any).id ?? data.indexOf(record);
+      };
+
+      return flattenTree(processed, treeSettings.childrenKey as string, expandedKeys, getRowKey);
+    }
+
+    return processed;
+  }, [data, mode, filters, sortState, columns, treeSettings, expandedKeys, rowKey]);
 
   const { frozenData, scrolledData } = useMemo(() => {
     if (settings.frozenRows && settings.frozenRows > 0) {
@@ -697,6 +730,8 @@ export const Table = <T extends Record<string, any>>({
                   height={rowHeight}
                   readOnly={rReadOnly}
                   disabled={rDisabled}
+                  onToggle={toggleRow}
+                  treeSettings={treeSettings}
                   style={{
                     position: 'sticky',
                     top: stickyTop,
@@ -751,6 +786,8 @@ export const Table = <T extends Record<string, any>>({
                       height={rowHeight}
                       readOnly={rReadOnly}
                       disabled={rDisabled}
+                      onToggle={toggleRow}
+                      treeSettings={treeSettings}
                     />
                   );
                 })}
@@ -797,6 +834,8 @@ export const Table = <T extends Record<string, any>>({
                     height={rowHeight}
                     readOnly={rReadOnly}
                     disabled={rDisabled}
+                    onToggle={toggleRow}
+                    treeSettings={treeSettings}
                   />
                 );
               })

@@ -138,6 +138,51 @@ export const processData = <T extends Record<string, any>>(
     });
   }
 
+  // Recursive processing for children if they exist
+  result = result.map((item) => {
+    const childrenKey = (item as any).children ? 'children' : undefined; // Simple detection
+    if (childrenKey && Array.isArray(item[childrenKey])) {
+      return {
+        ...item,
+        [childrenKey]: processData(item[childrenKey], filters, sortState, columns),
+      };
+    }
+    return item;
+  });
+
+  return result;
+};
+
+/**
+ * Flattens hierarchical data into a linear list for rendering.
+ */
+export const flattenTree = <T extends Record<string, any>>(
+  data: T[],
+  childrenKey: string = 'children',
+  expandedKeys: Set<string | number> = new Set(),
+  getRowKey: (record: T) => string | number,
+  level: number = 0,
+): (T & { __level: number; __hasChildren: boolean; __expanded: boolean })[] => {
+  const result: (T & { __level: number; __hasChildren: boolean; __expanded: boolean })[] = [];
+
+  data.forEach((item) => {
+    const key = getRowKey(item);
+    const children = item[childrenKey];
+    const hasChildren = Array.isArray(children) && children.length > 0;
+    const expanded = expandedKeys.has(key);
+
+    result.push({
+      ...item,
+      __level: level,
+      __hasChildren: hasChildren,
+      __expanded: expanded,
+    });
+
+    if (hasChildren && expanded) {
+      result.push(...flattenTree(children, childrenKey, expandedKeys, getRowKey, level + 1));
+    }
+  });
+
   return result;
 };
 
