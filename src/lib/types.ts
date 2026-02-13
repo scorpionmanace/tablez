@@ -107,10 +107,15 @@ export interface TableSettings extends BaseTableSettings {
 }
 
 export interface TreeSettings<T = any> {
+  /** Enable hierarchical row support. default: false */
   enabled?: boolean;
-  childrenKey?: keyof T | string; // key that contains child rows
-  indentSize?: number; // px per level
-  expandColumnKey?: string; // column key to show expansion toggle
+  /** Key in data containing child rows. default: 'children' */
+  childrenKey?: keyof T | string;
+  /** Pixels of indentation per level. default: 20 */
+  indentSize?: number;
+  /** Column key to show expansion toggle. default: first column */
+  expandColumnKey?: string;
+  /** Initial expansion state. default: false */
   defaultExpanded?: boolean;
 }
 

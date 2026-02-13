@@ -263,77 +263,108 @@ The API was reorganized in v0.0.5 to support multi-framework usage and better re
 ### `Table` Props (React)
 
 | Prop | Type | Description |
-|------|------|-------------|
-| `data` | `T[]` (Required) | Array of data records to display |
-| `columns` | `Column<T>[]` (Required) | Column definitions |
-| `settings` | `TableSettings` | Table-wide configurations |
-| `rowSettings`| `RowSettings` | Row-specific configurations |
-| `onSort` | `(state: TableSortState) => void` | Server-mode sort callback |
-| `onFilter` | `(filters: TableFilters) => void` | Server-mode filter callback |
-| `onCellEdit` | `(record: T, key: string, value: any) => void` | Callback when a cell is edited |
-| `components` | `TableComponents` | Override Row, Cell, or Header components |
+| --- | --- | --- |
+| `data` | `T[]` | - |
+| `columns` | `Column<T>[]` | Grouped settings |
+| `settings?` | `TableSettings` | - |
+| `rowSettings?` | `RowSettings<T>` | Callbacks |
+| `onSort?` | `(sortState: TableSortState) => void` | - |
+| `onFilter?` | `(filters: TableFilters) => void` | - |
+| `onColumnUpdate?` | `(columns: Column<T>[]) => void` | - |
+| `onColumnOrderChange?` | `(columnKeys: string[]) => void` | - |
+| `onCellEdit?` | `(record: T, key: string, value: any) => void` | - |
+| `onDataChange?` | `(newData: T[]) => void` | State (Optional for controlled mode) |
+| `sortState?` | `TableSortState` | - |
+| `filters?` | `TableFilters` | Advanced |
+| `components?` | `TableComponents` | - |
 
 ### `TableSettings`
 
 | Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `virtualized` | `boolean` | `false` | Enable virtual scrolling |
-| `containerHeight` | `number` | `500` | Height of the scroll container |
-| `mode` | `'client' \| 'server'` | `'client'` | Processing mode |
-| `loading` | `boolean` | `false` | Show loading state |
-| `showColumnBorders`| `boolean` | `true` | Show vertical separators |
-| `resizable` | `boolean` | `false` | Global resize enable |
-| `theme` | `TableTheme` | `defaultTheme` | Theme object |
-| `toolbar` | `ToolbarSettings` | `undefined` | Toolbar configuration |
-| `treeSettings`| `TreeSettings` | `undefined` | Hierarchical row settings |
+| --- | --- | --- | --- |
+| `showColumnBorders?` | `boolean` | `-` | - |
+| `resizable?` | `boolean` | `-` | Global enable |
+| `className?` | `string` | `-` | - |
+| `style?` | `CSSProperties` | `-` | - |
+| `containerStyle?` | `CSSProperties` | `-` | For React Native |
+| `theme?` | `TableTheme` | `-` | - |
+| `contextMenu?` | `{
+    enabled?: boolean` | `-` | - |
+| `items?` | `(ContextMenuItem \| ContextMenuDefaultOption)[]` | `-` | - |
+| `options?` | `ContextMenuDefaultOption[]` | `-` | - |
+| `customActions?` | `{
+      label: string` | `-` | - |
+| `onClick` | `(record: any, column: Column<any>) => void` | `-` | - |
+| `shortcut?` | `string` | `-` | - |
+| `toolbar?` | `ToolbarSettings` | `-` | - |
+| `treeSettings?` | `TreeSettings` | `-` | - |
+| `virtualized?` | `boolean` | `-` | - |
+| `containerHeight?` | `number` | `-` | - |
+| `mode?` | `'client' \| 'server'` | `-` | - |
+| `loading?` | `boolean` | `-` | - |
+| `draggableColumns?` | `boolean` | `-` | - |
+| `frozenRows?` | `number` | `-` | - |
 
 ### `RowSettings`
 
 | Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `key` | `string \| (r: T) => string` | `undefined` | Unique row key |
-| `height` | `number` | `50` | Row height in pixels |
-| `overscan` | `number` | `3` | Rows to render outside viewport |
-| `className` | `string \| (r: T, i: n) => string` | `undefined` | Custom row CSS class |
-| `onClick` | `(record: T) => void` | `undefined` | Row click handler |
-| `readOnly` | `boolean \| (r: T) => boolean` | `false` | Make entire row read-only |
-| `disabled` | `boolean \| (r: T) => boolean` | `false` | Disable entire row |
+| --- | --- | --- | --- |
+| `key?` | `string \| ((record: T) => string)` | `-` | - |
+| `className?` | `string \| ((record: T, index: number) => string)` | `-` | - |
+| `onClick?` | `(record: T) => void` | `-` | - |
+| `readOnly?` | `boolean \| ((record: T) => boolean)` | `-` | - |
+| `disabled?` | `boolean \| ((record: T) => boolean)` | `-` | - |
+| `height?` | `number` | `-` | - |
+| `overscan?` | `number` | `-` | - |
 
 ### `Column` Properties
 
 | Property | Type | Description |
-|----------|------|-------------|
-| `key` | `string` | Unique key for the column |
-| `title` | `ReactNode` | Column header title |
-| `fixed` | `'left' \| 'right'` | Pin column to side |
-| `sortable` | `boolean` | Enable sorting for this column |
-| `filterable` | `boolean` | Enable search filter for this column |
-| `editable` | `boolean \| (record: T) => boolean` | Enable cell editing |
-| `width` | `number` | Width in pixels |
-| `align` | `'left' \| 'center' \| 'right'` | Text alignment |
-| `render` | `function` | Custom cell rendering function |
-| `formula` | `string` | Excel-like calculation (starts with `=`) |
-| `readOnly` | `boolean \| (record: T) => boolean` | Make column/cells read-only |
-| `disabled` | `boolean \| (record: T) =\u003e boolean` | Disable column/cells |
+| --- | --- | --- |
+| `key` | `string` | - |
+| `title` | `ReactNode` | - |
+| `render?` | `(value: any, record: T, index: number) => ReactNode` | - |
+| `headerRender?` | `(column: Column<T>) => ReactNode` | Custom header rendering |
+| `width?` | `number` | Force number for easier resizing calculations |
+| `resizable?` | `boolean` | Per-column resize override |
+| `align?` | `'left' \| 'center' \| 'right'` | - |
+| `sortable?` | `boolean` | - |
+| `filterable?` | `boolean` | - |
+| `searchType?` | `'text' \| 'number'` | - |
+| `editable?` | `boolean \| ((record: T) => boolean)` | - |
+| `className?` | `string` | Custom cell className |
+| `headerClassName?` | `string` | Custom header className |
+| `style?` | `CSSProperties` | Custom cell style |
+| `headerStyle?` | `CSSProperties` | Custom header style |
+| `fixed?` | `'left' \| 'right'` | Freeze column to left or right |
+| `formula?` | `string` | Excel-like formula starting with '=' |
+| `freezable?` | `boolean` | Enable/disable freezing for this column |
+| `draggable?` | `boolean` | Enable/disable reordering for this column |
+| `type?` | `ColumnType` | Data type for formatting and editing |
+| `format?` | `ColumnFormat` | Formatting options |
+| `readOnly?` | `boolean \| ((record: T) => boolean)` | - |
+| `disabled?` | `boolean \| ((record: T) => boolean)` | - |
 
 ### `TreeSettings`
 
 | Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `false` | Enable hierarchical row support |
-| `childrenKey`| `string` | `'children'`| Key in data containing child rows |
-| `indentSize` | `number` | `20` | Pixels of indentation per level |
-| `expandColumnKey`| `string` | `First Col` | Which column displays the toggle |
-| `defaultExpanded`| `boolean` | `false` | Initial expansion state |
+| --- | --- | --- | --- |
+| `enabled?` | `boolean` | `-` | - |
+| `childrenKey?` | `keyof T \| string` | `-` | key that contains child rows |
+| `indentSize?` | `number` | `-` | px per level |
+| `expandColumnKey?` | `string` | `-` | column key to show expansion toggle |
+| `defaultExpanded?` | `boolean` | `-` | - |
 
 ### `ToolbarSettings`
 
 | Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `false` | Enable the toolbar |
-| `position` | `'top' \| 'bottom'` | `'top'` | Toolbar vertical placement |
-| `items` | `(ToolbarItem \| 'search' \| 'download' \| 'separator')[]` | `['search', 'download']` | Items to display |
-| `downloadOptions`| `('csv' \| 'xlsx' \| 'pdf' \| 'tsv')[]` | `['csv', 'xlsx']` | Available export formats |
+| --- | --- | --- | --- |
+| `enabled?` | `boolean` | `-` | - |
+| `position?` | `'top' \| 'bottom'` | `-` | - |
+| `items?` | `(ToolbarItem<T> \| 'download' \| 'search' \| 'separator')[]` | `-` | - |
+| `downloadOptions?` | `('csv' \| 'xlsx' \| 'pdf' \| 'tsv')[]` | `-` | - |
+| `className?` | `string` | `-` | - |
+| `style?` | `CSSProperties` | `-` | - |
 
 ---
 

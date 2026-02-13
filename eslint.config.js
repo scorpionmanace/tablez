@@ -12,7 +12,10 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 export default defineConfig([
   globalIgnores(['dist', 'node_modules', '*.config.js']),
   js.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.recommendedTypeChecked.map((config) => ({
+    ...config,
+    files: ['**/*.{ts,tsx}'],
+  })),
   {
     files: ['**/*.{ts,tsx}'],
     plugins: {
@@ -82,6 +85,18 @@ export default defineConfig([
       '@typescript-eslint/no-unsafe-argument': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/require-await': 'off',
+    },
+  },
+  {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-useless-escape': 'off',
     },
   },
   prettierConfig,
