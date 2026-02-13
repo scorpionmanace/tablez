@@ -1,8 +1,8 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
-import dts from 'vite-plugin-dts'
-import { resolve } from 'path'
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import dts from 'vite-plugin-dts';
+import { resolve } from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -21,7 +21,8 @@ export default defineConfig({
         native: resolve(__dirname, 'src/lib/native/index.ts'),
       },
       name: 'Tablez',
-      fileName: (format, entryName) => `${entryName === 'main' ? 'tablez' : entryName}.${format}.js`,
+      fileName: (format, entryName) =>
+        `${entryName === 'main' ? 'tablez' : entryName}.${format}.js`,
     },
     rollupOptions: {
       external: ['react', 'react-dom', 'react/jsx-runtime', 'react-native'],
@@ -39,4 +40,4 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
   },
-})
+});

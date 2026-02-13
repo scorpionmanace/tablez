@@ -14,13 +14,26 @@ interface User {
 }
 
 const UserIcon = () => (
-  <svg style={{ width: 16, height: 16, marginRight: 8, verticalAlign: 'middle' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+  <svg
+    style={{ width: 16, height: 16, marginRight: 8, verticalAlign: 'middle' }}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
   </svg>
 );
 
 const RoleIcon = () => (
-  <svg style={{ width: 14, height: 14, marginRight: 6, verticalAlign: 'middle' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg
+    style={{ width: 14, height: 14, marginRight: 6, verticalAlign: 'middle' }}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
   </svg>
 );
@@ -31,8 +44,8 @@ const columns: Column<User>[] = [
     title: 'ID',
     width: 60,
     sortable: true,
-    fixed: 'left' as const,
-    readOnly: true
+    fixed: 'left',
+    readOnly: true,
   },
   {
     key: 'name',
@@ -45,7 +58,7 @@ const columns: Column<User>[] = [
         <UserIcon /> User Name
       </span>
     ),
-    style: { fontWeight: 500 }
+    style: { fontWeight: 500 },
   },
   {
     key: 'role',
@@ -53,11 +66,11 @@ const columns: Column<User>[] = [
     sortable: true,
     filterable: true,
     editable: (record) => record.id !== 1,
-    render: (value) => (
+    render: (value: string) => (
       <span>
         <RoleIcon /> {value}
       </span>
-    )
+    ),
   },
   {
     key: 'status',
@@ -66,7 +79,7 @@ const columns: Column<User>[] = [
     filterable: false,
     freezable: false,
     draggable: false,
-    render: (value) => (
+    render: (value: string) => (
       <span
         style={{
           padding: '4px 8px',
@@ -77,7 +90,7 @@ const columns: Column<User>[] = [
           fontWeight: 600,
         }}
       >
-        {value.toUpperCase()}
+        {String(value).toUpperCase()}
       </span>
     ),
   },
@@ -88,7 +101,7 @@ const columns: Column<User>[] = [
     sortable: true,
     editable: true,
     type: 'date',
-    format: { dateFormat: 'YYYY-MM-DD' }
+    format: { dateFormat: 'YYYY-MM-DD' },
   },
   {
     key: 'score',
@@ -98,14 +111,14 @@ const columns: Column<User>[] = [
     sortable: true,
     editable: true,
     type: 'number',
-    format: { decimals: 1, suffix: ' pts' }
+    format: { decimals: 1, suffix: ' pts' },
   },
   {
     key: 'avatar',
     title: 'Avatar',
     width: 80,
     formula: "=IMG('https://api.dicebear.com/7.x/avataaars/svg?seed=' + {name}, {name}, 32, 32)",
-    align: 'center' as const,
+    align: 'center',
     sortable: false,
     filterable: false,
     freezable: false,
@@ -116,7 +129,7 @@ const columns: Column<User>[] = [
     width: 150,
     formula: "=LOWER(CONCAT('Score: ', ROUND({id} * 1.5, 1)))",
     sortable: true,
-  }
+  },
 ];
 
 const midnightTheme: TableTheme = {
@@ -134,7 +147,7 @@ const midnightTheme: TableTheme = {
   headerCell: {
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
-  }
+  },
 };
 
 function App() {
@@ -149,10 +162,11 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const [allData, setAllData] = useState<User[]>(() => {
+    const roles = ['Admin', 'Editor', 'Viewer', 'Maintainer'];
     return Array.from({ length: 1000 }, (_, i) => ({
       id: i + 1,
       name: `User ${i + 1}`,
-      role: ['Admin', 'Editor', 'Viewer', 'Maintainer'][i % 4] as any,
+      role: roles[i % 4],
       status: i % 3 === 0 ? 'active' : 'inactive',
       lastLogin: new Date(Date.now() - Math.random() * 10000000000).toISOString().split('T')[0],
       score: Math.floor(Math.random() * 1000),
@@ -160,8 +174,20 @@ function App() {
   });
 
   const [serverData, setServerData] = useState<User[]>([]);
-  const [currentColumns, setCurrentColumns] = useState(columns);
+  const [currentColumns, setCurrentColumns] = useState<Column<User>[]>(columns);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+
+  // Sync server data when mode or allData changes
+  const [prevMode, setPrevMode] = useState<'client' | 'server'>('client');
+  const [prevAllData, setPrevAllData] = useState<User[]>(allData);
+
+  if (mode !== prevMode || allData !== prevAllData) {
+    setPrevMode(mode);
+    setPrevAllData(allData);
+    if (mode === 'server') {
+      setServerData(allData.slice(0, 50));
+    }
+  }
 
   useEffect(() => {
     const handleResize = () => setWindowHeight(window.innerHeight);
@@ -169,32 +195,24 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    if (mode === 'server') {
-      setServerData(allData.slice(0, 50));
-    }
-  }, [mode, allData]);
-
   const handleDataChange = (newData: User[]) => {
     setAllData(newData);
-    if (mode === 'server') {
-      setServerData(newData.slice(0, 50));
-    }
   };
 
   const handleCellEdit = (record: User, key: string, value: any) => {
-    setAllData(prev => prev.map(item =>
-      item.id === record.id ? { ...item, [key]: value } : item
-    ));
+    setAllData((prev) =>
+      prev.map((item) => (item.id === record.id ? { ...item, [key]: value } : item)),
+    );
   };
 
   const shuffleColumns = () => {
     const next = [...currentColumns];
-    const movableIndices = next.map((c, i) => c.fixed ? -1 : i).filter(i => i !== -1);
+    const movableIndices = next.map((c, i) => (c.fixed ? -1 : i)).filter((i) => i !== -1);
     if (movableIndices.length < 2) return;
     const fromIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
     let toIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
-    while (toIndex === fromIndex) toIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
+    while (toIndex === fromIndex)
+      toIndex = movableIndices[Math.floor(Math.random() * movableIndices.length)];
     const [moved] = next.splice(fromIndex, 1);
     next.splice(toIndex, 0, moved);
     setCurrentColumns(next);
@@ -204,8 +222,8 @@ function App() {
     setLoading(true);
     setTimeout(() => {
       const sorted = [...allData].sort((a, b) => {
-        const valA = (a as any)[sortState.columnKey];
-        const valB = (b as any)[sortState.columnKey];
+        const valA = (a as Record<string, any>)[sortState.columnKey];
+        const valB = (b as Record<string, any>)[sortState.columnKey];
         if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
         return 0;
@@ -220,8 +238,10 @@ function App() {
     setTimeout(() => {
       let filtered = [...allData];
       Object.entries(filters).forEach(([key, value]) => {
-        filtered = filtered.filter(item =>
-          String((item as any)[key]).toLowerCase().includes(value.toLowerCase())
+        filtered = filtered.filter((item) =>
+          String((item as Record<string, any>)[key])
+            .toLowerCase()
+            .includes(value.toLowerCase()),
         );
       });
       setServerData(filtered.slice(0, 50));
@@ -231,46 +251,68 @@ function App() {
 
   // --- Vanilla Engine Example ---
   const [vanillaState, setVanillaState] = useState<any>(null);
-  const vanillaEngine = useMemo(() => new TablezEngine({
-    data: allData.slice(0, 100),
-    columns: columns as any,
-    settings: { containerHeight: 300, virtualized: true },
-    onUpdate: (state) => setVanillaState(state)
-  }), [allData]);
+  const vanillaEngine = useMemo(
+    () =>
+      new TablezEngine({
+        data: allData.slice(0, 100),
+        columns: columns as Column<any>[],
+        settings: { containerHeight: 300, virtualized: true },
+        onUpdate: (state) => setVanillaState(state),
+      }),
+    [allData],
+  );
 
   const controlButtonStyle = (active: boolean) => ({
-    backgroundColor: active ? '#3b82f6' : (useDark ? '#1e293b' : '#f1f5f9'),
-    color: active ? 'white' : (useDark ? '#94a3b8' : '#475569'),
+    backgroundColor: active ? '#3b82f6' : useDark ? '#1e293b' : '#f1f5f9',
+    color: active ? 'white' : useDark ? '#94a3b8' : '#475569',
     border: `1px solid ${useDark ? '#334155' : '#e2e8f0'}`,
     padding: '6px 12px',
     borderRadius: '6px',
     fontSize: '12px',
     fontWeight: 500,
     cursor: 'pointer',
-    transition: 'all 0.15s'
+    transition: 'all 0.15s',
   });
 
   return (
     <div className="container" data-theme={useDark ? 'dark' : 'light'}>
-      <header style={{
-        height: '60px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 24px',
-        borderBottom: `1px solid ${useDark ? '#334155' : '#e2e8f0'}`,
-        backgroundColor: useDark ? '#0f172a' : '#fff',
-        flexShrink: 0,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-      }}>
+      <header
+        style={{
+          height: '60px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 24px',
+          borderBottom: `1px solid ${useDark ? '#334155' : '#e2e8f0'}`,
+          backgroundColor: useDark ? '#0f172a' : '#fff',
+          flexShrink: 0,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>T</div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', color: useDark ? '#f8fafc' : '#0f172a' }}>Tablez</h2>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold',
+              }}
+            >
+              T
+            </div>
+            <h2 style={{ margin: 0, fontSize: '1.1rem', color: useDark ? '#f8fafc' : '#0f172a' }}>
+              Tablez
+            </h2>
           </div>
 
           <nav style={{ display: 'flex', gap: '4px' }}>
-            {(['main', 'theme', 'vanilla', 'core'] as const).map(tab => (
+            {(['main', 'theme', 'vanilla', 'core'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -278,11 +320,12 @@ function App() {
                   padding: '6px 14px',
                   borderRadius: '6px',
                   border: 'none',
-                  backgroundColor: activeTab === tab ? (useDark ? '#1e293b' : '#f1f5f9') : 'transparent',
-                  color: activeTab === tab ? '#3b82f6' : (useDark ? '#64748b' : '#64748b'),
+                  backgroundColor:
+                    activeTab === tab ? (useDark ? '#1e293b' : '#f1f5f9') : 'transparent',
+                  color: activeTab === tab ? '#3b82f6' : useDark ? '#64748b' : '#64748b',
                   fontSize: '13px',
                   fontWeight: 600,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
                 }}
               >
                 {tab === 'main' ? 'Demo' : tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -299,20 +342,66 @@ function App() {
       </header>
 
       {activeTab === 'main' && (
-        <div style={{ height: '44px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 24px', backgroundColor: useDark ? '#020617' : '#f8fafc', borderBottom: `1px solid ${useDark ? '#1e293b' : '#f1f5f9'}`, flexShrink: 0, overflowX: 'auto' }}>
-          <button onClick={() => setMode(mode === 'client' ? 'server' : 'client')} style={controlButtonStyle(mode === 'server')}>Mode: {mode.toUpperCase()}</button>
-          <button onClick={() => setResizable(!resizable)} style={controlButtonStyle(resizable)}>Resize: {resizable ? 'ON' : 'OFF'}</button>
-          <button onClick={() => setVirtualized(!virtualized)} style={controlButtonStyle(virtualized)}>Virtual: {virtualized ? 'ON' : 'OFF'}</button>
-          <button onClick={() => setDraggable(!draggable)} style={controlButtonStyle(draggable)}>Drag: {draggable ? 'ON' : 'OFF'}</button>
-          <button onClick={() => setFrozenRows(prev => prev === 0 ? 2 : 0)} style={controlButtonStyle(frozenRows > 0)}>Frozen Rows ({frozenRows})</button>
-          <button onClick={() => setShowBorders(!showBorders)} style={controlButtonStyle(showBorders)}>Borders: {showBorders ? 'ON' : 'OFF'}</button>
-          <button onClick={shuffleColumns} style={{ ...controlButtonStyle(false), backgroundColor: '#10b981', color: 'white', border: 'none' }}>🔀 Shuffle</button>
+        <div
+          style={{
+            height: '44px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '0 24px',
+            backgroundColor: useDark ? '#020617' : '#f8fafc',
+            borderBottom: `1px solid ${useDark ? '#1e293b' : '#f1f5f9'}`,
+            flexShrink: 0,
+            overflowX: 'auto',
+          }}
+        >
+          <button
+            onClick={() => setMode(mode === 'client' ? 'server' : 'client')}
+            style={controlButtonStyle(mode === 'server')}
+          >
+            Mode: {mode.toUpperCase()}
+          </button>
+          <button onClick={() => setResizable(!resizable)} style={controlButtonStyle(resizable)}>
+            Resize: {resizable ? 'ON' : 'OFF'}
+          </button>
+          <button
+            onClick={() => setVirtualized(!virtualized)}
+            style={controlButtonStyle(virtualized)}
+          >
+            Virtual: {virtualized ? 'ON' : 'OFF'}
+          </button>
+          <button onClick={() => setDraggable(!draggable)} style={controlButtonStyle(draggable)}>
+            Drag: {draggable ? 'ON' : 'OFF'}
+          </button>
+          <button
+            onClick={() => setFrozenRows((prev) => (prev === 0 ? 2 : 0))}
+            style={controlButtonStyle(frozenRows > 0)}
+          >
+            Frozen Rows ({frozenRows})
+          </button>
+          <button
+            onClick={() => setShowBorders(!showBorders)}
+            style={controlButtonStyle(showBorders)}
+          >
+            Borders: {showBorders ? 'ON' : 'OFF'}
+          </button>
+          <button
+            onClick={shuffleColumns}
+            style={{
+              ...controlButtonStyle(false),
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+            }}
+          >
+            🔀 Shuffle
+          </button>
         </div>
       )}
 
       <main style={{ flex: 1, overflow: 'hidden', padding: activeTab === 'main' ? 0 : '40px' }}>
         {activeTab === 'main' && (
-          <Table
+          <Table<User>
             data={mode === 'client' ? allData : serverData}
             columns={currentColumns}
             onColumnUpdate={setCurrentColumns}
@@ -330,8 +419,12 @@ function App() {
               contextMenu: {
                 enabled: true,
                 items: [
-                  'insertRowAbove', 'insertRowBelow', { type: 'separator' },
-                  'insertColumnLeft', 'insertColumnRight', { type: 'separator' },
+                  'insertRowAbove',
+                  'insertRowBelow',
+                  { type: 'separator' },
+                  'insertColumnLeft',
+                  'insertColumnRight',
+                  { type: 'separator' },
                   {
                     label: 'Copy',
                     icon: 'copy',
@@ -339,22 +432,28 @@ function App() {
                       'copy',
                       { type: 'separator' },
                       'copyTableWithHeader',
-                      'copyTableWithoutHeader'
-                    ]
+                      'copyTableWithoutHeader',
+                    ],
                   },
-                  'cut', 'paste', { type: 'separator' },
-                  'undo', 'redo', { type: 'separator' },
-                  'hideRow', 'hideColumn', 'renameColumn',
-                ]
-              }
+                  'cut',
+                  'paste',
+                  { type: 'separator' },
+                  'undo',
+                  'redo',
+                  { type: 'separator' },
+                  'hideRow',
+                  'hideColumn',
+                  'renameColumn',
+                ],
+              },
             }}
             rowSettings={{
-              key: "id",
+              key: 'id',
               height: 48,
-              disabled: (record) => record.id % 5 === 0
+              disabled: (record: User) => record.id % 5 === 0,
             }}
             onCellEdit={handleCellEdit}
-            onSort={mode === 'server' ? handleServerSort : undefined}
+            onSort={mode === 'server' ? (handleServerSort as any) : undefined}
             onFilter={mode === 'server' ? handleServerFilter : undefined}
           />
         )}
@@ -362,11 +461,27 @@ function App() {
         {activeTab === 'theme' && (
           <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
             <h3 style={{ marginBottom: 15, color: useDark ? '#fff' : '#000' }}>Midnight Theme</h3>
-            <div style={{ borderRadius: 12, overflow: 'hidden', height: '400px', border: '1px solid #334155' }}>
-              <Table
+            <div
+              style={{
+                borderRadius: 12,
+                overflow: 'hidden',
+                height: '400px',
+                border: '1px solid #334155',
+              }}
+            >
+              <Table<User>
                 data={allData.slice(0, 100)}
-                columns={[{ key: 'id', title: 'ID', width: 60, fixed: 'left' }, { key: 'name', title: 'Name', width: 200 }, { key: 'role', title: 'Role', width: 150 }, { key: 'status', title: 'Status', width: 120 }]}
-                settings={{ theme: midnightTheme, containerHeight: 400, showColumnBorders: false }}
+                columns={[
+                  { key: 'id', title: 'ID', width: 60, fixed: 'left' },
+                  { key: 'name', title: 'Name', width: 200 },
+                  { key: 'role', title: 'Role', width: 150 },
+                  { key: 'status', title: 'Status', width: 120 },
+                ]}
+                settings={{
+                  theme: midnightTheme,
+                  containerHeight: 400,
+                  showColumnBorders: false,
+                }}
               />
             </div>
           </div>
@@ -376,16 +491,59 @@ function App() {
           <div style={{ maxWidth: '1000px', margin: '0 auto', color: useDark ? '#fff' : '#000' }}>
             <h3>Headless Engine</h3>
             <div style={{ display: 'flex', gap: 20, marginTop: 20 }}>
-              <div style={{ flex: 1, border: `1px solid ${useDark ? '#334155' : '#eee'}`, padding: 20, borderRadius: 8 }}>
+              <div
+                style={{
+                  flex: 1,
+                  border: `1px solid ${useDark ? '#334155' : '#eee'}`,
+                  padding: 20,
+                  borderRadius: 8,
+                }}
+              >
                 <pre style={{ fontSize: '0.8em', maxHeight: 200, overflow: 'auto' }}>
-                  {JSON.stringify({ startIndex: vanillaState?.startIndex, totalHeight: vanillaState?.totalHeight }, null, 2)}
+                  {JSON.stringify(
+                    {
+                      startIndex: vanillaState?.startIndex,
+                      totalHeight: vanillaState?.totalHeight,
+                    },
+                    null,
+                    2,
+                  )}
                 </pre>
               </div>
-              <div onScroll={(e) => vanillaEngine.setScrollTop((e.target as any).scrollTop)} style={{ flex: 1, height: 300, overflow: 'auto', border: '2px dashed #cbd5e1', position: 'relative' }}>
-                <div style={{ height: vanillaState?.totalHeight, position: 'relative' }}>
-                  <div style={{ transform: `translateY(${vanillaState?.offsetY}px)`, position: 'absolute', width: '100%' }}>
-                    {vanillaState?.visibleData?.map((u: any) => (
-                      <div key={u.id} style={{ height: 50, borderBottom: '1px solid #eee', padding: '0 15px', display: 'flex', alignItems: 'center' }}>
+              <div
+                onScroll={(e) => vanillaEngine.setScrollTop((e.target as HTMLDivElement).scrollTop)}
+                style={{
+                  flex: 1,
+                  height: 300,
+                  overflow: 'auto',
+                  border: '2px dashed #cbd5e1',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    height: (vanillaState?.totalHeight ?? 0) as number,
+                    position: 'relative',
+                  }}
+                >
+                  <div
+                    style={{
+                      transform: `translateY(${(vanillaState?.offsetY ?? 0) as number}px)`,
+                      position: 'absolute',
+                      width: '100%',
+                    }}
+                  >
+                    {(vanillaState?.visibleData ?? []).map((u: any) => (
+                      <div
+                        key={u.id}
+                        style={{
+                          height: 50,
+                          borderBottom: '1px solid #eee',
+                          padding: '0 15px',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
                         #{u.id} - {u.name}
                       </div>
                     ))}
@@ -399,8 +557,24 @@ function App() {
         {activeTab === 'core' && (
           <div style={{ maxWidth: '1000px', margin: '0 auto', color: useDark ? '#fff' : '#000' }}>
             <h3>Core Math</h3>
-            <pre style={{ backgroundColor: useDark ? '#1e293b' : '#f8fafc', padding: 25, borderRadius: 12 }}>
-              {JSON.stringify(calculateVirtualization({ scrollTop: 10000, height: 40, containerHeight: 600, dataLength: 1000000, overscan: 5 }), null, 4)}
+            <pre
+              style={{
+                backgroundColor: useDark ? '#1e293b' : '#f8fafc',
+                padding: 25,
+                borderRadius: 12,
+              }}
+            >
+              {JSON.stringify(
+                calculateVirtualization({
+                  scrollTop: 10000,
+                  height: 40,
+                  containerHeight: 600,
+                  dataLength: 1000000,
+                  overscan: 5,
+                }),
+                null,
+                4,
+              )}
             </pre>
           </div>
         )}

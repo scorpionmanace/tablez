@@ -5,107 +5,113 @@ import { Cell } from './Cell';
 import { calculateColumnOffsets } from '../core/engine';
 
 interface RowProps<T> {
-    record: T;
-    columns: Column<T>[];
-    theme: TableTheme;
-    onClick?: (record: T) => void;
-    onCellEdit?: (record: T, key: string, value: any) => void;
-    onContextMenu?: (record: T, column: Column<T>, e: MouseEvent) => void;
-    onFocus?: (column: Column<T>) => void;
-    style?: CSSProperties;
-    index: number;
-    className?: string | ((record: T, index: number) => string);
-    showColumnBorders?: boolean;
-    height?: number;
-    readOnly?: boolean;
-    disabled?: boolean;
+  record: T;
+  columns: Column<T>[];
+  theme: TableTheme;
+  onClick?: (record: T) => void;
+  onCellEdit?: (record: T, key: string, value: any) => void;
+  onContextMenu?: (record: T, column: Column<T>, e: MouseEvent) => void;
+  onFocus?: (column: Column<T>) => void;
+  style?: CSSProperties;
+  index: number;
+  className?: string | ((record: T, index: number) => string);
+  showColumnBorders?: boolean;
+  height?: number;
+  readOnly?: boolean;
+  disabled?: boolean;
 }
 
-const RowInner = <T,>({
-    record,
-    columns,
-    theme,
-    onClick,
-    onCellEdit,
-    onContextMenu,
-    onFocus,
-    style,
-    index,
-    className,
-    showColumnBorders,
-    height,
-    readOnly,
-    disabled
+const RowInner = <T extends Record<string, any>>({
+  record,
+  columns,
+  theme,
+  onClick,
+  onCellEdit,
+  onContextMenu,
+  onFocus,
+  style,
+  index,
+  className,
+  showColumnBorders,
+  height,
+  readOnly,
+  disabled,
 }: RowProps<T>) => {
-    const [isHovered, setIsHovered] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-    // Dynamic styles calculations...
-    const rowClassName = typeof className === 'function' ? className(record, index) : className;
-    const isRowSticky = style?.position === 'sticky';
+  // Dynamic styles calculations...
+  const rowClassName = typeof className === 'function' ? className(record, index) : className;
+  const isRowSticky = style?.position === 'sticky';
 
-    const rowStyle: CSSProperties = useMemo(() => ({
-        ...theme.row,
-        height: height,
-        maxHeight: height,
-        // Apply hover color if hovered, otherwise default row bg
-        backgroundColor: isHovered
-            ? (theme.tokens?.rowHoverColor || '#f1f5f9')
-            : (style?.backgroundColor || theme.row?.backgroundColor),
-        boxSizing: 'border-box',
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'background-color 0.15s ease',
-        opacity: disabled ? 0.6 : 1,
-        pointerEvents: disabled ? 'none' : 'auto',
-        ...style,
-    }), [theme.row, theme.tokens?.rowHoverColor, isHovered, style, height, onClick, disabled]);
+  const rowStyle: CSSProperties = useMemo(
+    () => ({
+      ...theme.row,
+      height: height,
+      maxHeight: height,
+      // Apply hover color if hovered, otherwise default row bg
+      backgroundColor: isHovered
+        ? (theme.tokens?.rowHoverColor ?? '#f1f5f9')
+        : (style?.backgroundColor ?? theme.row?.backgroundColor),
+      boxSizing: 'border-box',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'background-color 0.15s ease',
+      opacity: disabled ? 0.6 : 1,
+      pointerEvents: disabled ? 'none' : 'auto',
+      ...style,
+    }),
+    [theme.row, theme.tokens?.rowHoverColor, isHovered, style, height, onClick, disabled],
+  );
 
-    // Calculate sticky offsets
-    const { leftOffsets, rightOffsets } = useMemo(() =>
-        calculateColumnOffsets(columns),
-        [columns]);
+  // Calculate sticky offsets
+  const { leftOffsets, rightOffsets } = useMemo(() => calculateColumnOffsets(columns), [columns]);
 
-    return (
-        <tr
-            className={rowClassName}
-            style={rowStyle}
-            onClick={() => !disabled && onClick?.(record)}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-        >
-            {columns.map((col, idx) => {
-                const isFixed = !!col.fixed;
-                // Sticky styles for frozen columns
-                const cellBg = isHovered
-                    ? (theme.tokens?.rowHoverColor || '#f1f5f9')
-                    : (theme.cell?.backgroundColor || theme.row?.backgroundColor || theme.tokens?.backgroundColor || '#fff');
+  return (
+    <tr
+      className={rowClassName}
+      style={rowStyle}
+      onClick={() => !disabled && onClick?.(record)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {columns.map((col, idx) => {
+        const isFixed = !!col.fixed;
+        // Sticky styles for frozen columns
+        const cellBg = isHovered
+          ? (theme.tokens?.rowHoverColor ?? '#f1f5f9')
+          : (theme.cell?.backgroundColor ??
+            theme.row?.backgroundColor ??
+            theme.tokens?.backgroundColor ??
+            '#fff');
 
-                const stickyStyles: CSSProperties = isFixed ? {
-                    position: 'sticky',
-                    left: col.fixed === 'left' ? leftOffsets[idx] : undefined,
-                    right: col.fixed === 'right' ? rightOffsets[col.key] : undefined,
-                    zIndex: isRowSticky ? 40 : 20,
-                    backgroundColor: cellBg,
-                } : {};
+        const stickyStyles: CSSProperties = isFixed
+          ? {
+              position: 'sticky',
+              left: col.fixed === 'left' ? leftOffsets[idx] : undefined,
+              right: col.fixed === 'right' ? rightOffsets[col.key] : undefined,
+              zIndex: isRowSticky ? 40 : 20,
+              backgroundColor: cellBg,
+            }
+          : {};
 
-                return (
-                    <Cell
-                        key={col.key || idx}
-                        record={record}
-                        column={col}
-                        theme={theme}
-                        index={idx}
-                        onEdit={onCellEdit}
-                        onContextMenu={onContextMenu}
-                        onFocus={() => onFocus?.(col)}
-                        stickyStyles={stickyStyles}
-                        showColumnBorders={showColumnBorders}
-                        rowReadOnly={readOnly}
-                        rowDisabled={disabled}
-                    />
-                );
-            })}
-        </tr>
-    );
+        return (
+          <Cell
+            key={col.key || idx}
+            record={record}
+            column={col}
+            theme={theme}
+            index={idx}
+            onEdit={onCellEdit}
+            onContextMenu={onContextMenu}
+            onFocus={() => onFocus?.(col)}
+            stickyStyles={stickyStyles}
+            showColumnBorders={showColumnBorders}
+            rowReadOnly={readOnly}
+            rowDisabled={disabled}
+          />
+        );
+      })}
+    </tr>
+  );
 };
 
 export const Row = memo(RowInner) as typeof RowInner;
