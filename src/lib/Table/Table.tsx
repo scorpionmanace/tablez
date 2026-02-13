@@ -246,22 +246,48 @@ export const Table = <T extends Record<string, any>>({
     [onColumnOrderChange, onColumnUpdate],
   );
 
-  const processedData = useMemo(() => {
+  // 1. Process data (Filter/Sort) - Only when data/filters/sort change
+  const internalProcessedData = useMemo(() => {
     if (mode === 'server') return data;
-    const processed = processData(data, filters, sortState, columns as any);
+    return processData(
+      data,
+      filters,
+      sortState,
+      columns as any,
+      (treeSettings.childrenKey as string) || 'children',
+    );
+  }, [data, mode, filters, sortState, columns, treeSettings.childrenKey]);
 
-    if (treeSettings.enabled) {
-      const getRowKey = (record: T) => {
-        if (typeof rowKey === 'function') return rowKey(record);
-        if (rowKey && record[rowKey] !== undefined) return record[rowKey];
-        return (record as any).id ?? data.indexOf(record);
-      };
+  // 2. Flatten for display - When internal data or expansion state changes
+  const processedData = useMemo(() => {
+    if (mode === 'server' || !treeSettings.enabled) return internalProcessedData;
 
-      return flattenTree(processed, treeSettings.childrenKey as string, expandedKeys, getRowKey);
-    }
+    const getRowKey = (record: T) => {
+      if (typeof rowKey === 'function') return rowKey(record);
+      if (rowKey && (record as any)[rowKey] !== undefined) return (record as any)[rowKey];
+      return (record as any).id ?? data.indexOf(record);
+    };
 
-    return processed;
-  }, [data, mode, filters, sortState, columns, treeSettings, expandedKeys, rowKey]);
+    const isSearching = Object.values(filters).some((v) => !!v);
+
+    return flattenTree(
+      internalProcessedData,
+      (treeSettings.childrenKey as string) || 'children',
+      expandedKeys,
+      getRowKey,
+      0,
+      isSearching,
+    );
+  }, [
+    internalProcessedData,
+    mode,
+    treeSettings.enabled,
+    treeSettings.childrenKey,
+    expandedKeys,
+    rowKey,
+    data,
+    filters,
+  ]);
 
   const { frozenData, scrolledData } = useMemo(() => {
     if (settings.frozenRows && settings.frozenRows > 0) {

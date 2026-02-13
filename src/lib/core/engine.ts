@@ -84,45 +84,70 @@ export const processData = <T extends Record<string, any>>(
   filters: Filters,
   sortState?: SortState,
   columns: ColumnDef[] = [],
+  childrenKey: string = 'children', // Now explicitly passed or defaulted
 ): T[] => {
   // 0. Pre-process formulas
   const hasFormulas = columns.some((c) => !!c.formula);
-  let result = data.slice();
-
-  if (hasFormulas) {
-    result = result.map((item) => {
-      const newItem = { ...item } as Record<string, any>;
+  let result = data.map((item) => {
+    const newItem = { ...item } as Record<string, any>;
+    if (hasFormulas) {
       columns.forEach((col) => {
         if (col.formula) {
           newItem[col.key] = evaluateFormula(col.formula, newItem);
         }
       });
-      return newItem as T;
+    }
+    // Recursive processing for children first
+    if (newItem[childrenKey] && Array.isArray(newItem[childrenKey])) {
+      newItem[childrenKey] = processData(
+        newItem[childrenKey],
+        filters,
+        sortState,
+        columns,
+        childrenKey,
+      );
+    }
+    return newItem as T;
+  });
+
+  // 1. Apply filters (bottom-up logic)
+  const filterEntries = Object.entries(filters).filter(([_, v]) => !!v);
+  if (filterEntries.length > 0) {
+    result = result.filter((item) => {
+      // Check if item matches any filter
+      let matches = true;
+
+      for (const [key, value] of filterEntries) {
+        if (key === 'global') {
+          const searchTerms = value.toLowerCase().split(/\s+/).filter(Boolean);
+          const globalMatch = searchTerms.every((term) => {
+            return columns.some((col) => {
+              const itemValue = String(item[col.key] ?? '').toLowerCase();
+              return itemValue.includes(term);
+            });
+          });
+          if (!globalMatch) {
+            matches = false;
+            break;
+          }
+        } else {
+          const itemValue = String(item[key] ?? '').toLowerCase();
+          if (!itemValue.includes(value.toLowerCase())) {
+            matches = false;
+            break;
+          }
+        }
+      }
+
+      // If it has children that matched, keep this parent regardless
+      const children = item[childrenKey];
+      const hasMatchedChildren = Array.isArray(children) && children.length > 0;
+
+      return matches || hasMatchedChildren;
     });
   }
 
-  // Apply filters
-  Object.entries(filters).forEach(([key, value]) => {
-    if (!value) return;
-    if (key === 'global') {
-      const searchTerms = value.toLowerCase().split(/\s+/).filter(Boolean);
-      result = result.filter((item) => {
-        return searchTerms.every((term) => {
-          return columns.some((col) => {
-            const itemValue = String(item[col.key] ?? '').toLowerCase();
-            return itemValue.includes(term);
-          });
-        });
-      });
-      return;
-    }
-    result = result.filter((item) => {
-      const itemValue = String(item[key] ?? '').toLowerCase();
-      return itemValue.includes(value.toLowerCase());
-    });
-  });
-
-  // Apply sort
+  // 2. Apply sort (per level)
   if (sortState?.direction) {
     const { columnKey, direction } = sortState;
     result.sort((a, b) => {
@@ -138,18 +163,6 @@ export const processData = <T extends Record<string, any>>(
     });
   }
 
-  // Recursive processing for children if they exist
-  result = result.map((item) => {
-    const childrenKey = (item as any).children ? 'children' : undefined; // Simple detection
-    if (childrenKey && Array.isArray(item[childrenKey])) {
-      return {
-        ...item,
-        [childrenKey]: processData(item[childrenKey], filters, sortState, columns),
-      };
-    }
-    return item;
-  });
-
   return result;
 };
 
@@ -162,6 +175,7 @@ export const flattenTree = <T extends Record<string, any>>(
   expandedKeys: Set<string | number> = new Set(),
   getRowKey: (record: T) => string | number,
   level: number = 0,
+  forceExpand: boolean = false,
 ): (T & { __level: number; __hasChildren: boolean; __expanded: boolean })[] => {
   const result: (T & { __level: number; __hasChildren: boolean; __expanded: boolean })[] = [];
 
@@ -169,7 +183,7 @@ export const flattenTree = <T extends Record<string, any>>(
     const key = getRowKey(item);
     const children = item[childrenKey];
     const hasChildren = Array.isArray(children) && children.length > 0;
-    const expanded = expandedKeys.has(key);
+    const expanded = forceExpand || expandedKeys.has(key);
 
     result.push({
       ...item,
@@ -179,7 +193,9 @@ export const flattenTree = <T extends Record<string, any>>(
     });
 
     if (hasChildren && expanded) {
-      result.push(...flattenTree(children, childrenKey, expandedKeys, getRowKey, level + 1));
+      result.push(
+        ...flattenTree(children, childrenKey, expandedKeys, getRowKey, level + 1, forceExpand),
+      );
     }
   });
 
