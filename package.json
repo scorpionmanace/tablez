@@ -1,5 +1,16 @@
 {
   "name": "@scorpionmanace/tablez",
+  "description": "A modern, highly customizable, and performant React data table library with virtual scrolling and hierarchical tree support.",
+  "keywords": [
+    "react-table",
+    "data-table",
+    "virtual-scroll",
+    "tree-view",
+    "headless",
+    "formula-engine",
+    "performance",
+    "typescript"
+  ],
   "author": "Karan Khare",
   "license": "MIT",
   "private": false,
