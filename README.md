@@ -4,11 +4,12 @@ A modern, highly customizable, and performant React data table library.
 
 Features:
 - 🎨 **Theming Support**: Fully customizable token-based themes with dynamic variable support.
-- 📐 **Resizable Columns**: Drag-to-resize support.
-- ⚡ **Virtual Scrolling**: Efficient rendering for large datasets.
-- 🌳 **Tree Shaking**: Optimized for dead-code elimination.
-- 🔍 **Filtering & Sorting**: Built-in column menus with search and sort support.
+- 🌳 **Hierarchical Row Expansion**: Support for deeply nested data with virtualization and search.
+- ⚡ **Virtual Scrolling**: Efficient rendering for 100,000+ rows.
+- 🛠️ **Advanced Toolbar**: Built-in search, export, and custom action support.
+- 🔍 **Filtering & Sorting**: Multi-column filtering and sorting (per-level in tree mode).
 - 🌐 **Client & Server Side**: Support for both local and server-side data processing.
+- 📐 **Resizable Columns**: Drag-to-resize and reorder support.
 - ⚛️ **TypeScript Ready**: Full type support out of the box.
 
 ## 📦 Installation
@@ -283,6 +284,8 @@ The API was reorganized in v0.0.5 to support multi-framework usage and better re
 | `showColumnBorders`| `boolean` | `true` | Show vertical separators |
 | `resizable` | `boolean` | `false` | Global resize enable |
 | `theme` | `TableTheme` | `defaultTheme` | Theme object |
+| `toolbar` | `ToolbarSettings` | `undefined` | Toolbar configuration |
+| `treeSettings`| `TreeSettings` | `undefined` | Hierarchical row settings |
 
 ### `RowSettings`
 
@@ -311,7 +314,26 @@ The API was reorganized in v0.0.5 to support multi-framework usage and better re
 | `render` | `function` | Custom cell rendering function |
 | `formula` | `string` | Excel-like calculation (starts with `=`) |
 | `readOnly` | `boolean \| (record: T) => boolean` | Make column/cells read-only |
-| `disabled` | `boolean \| (record: T) => boolean` | Disable column/cells |
+| `disabled` | `boolean \| (record: T) =\u003e boolean` | Disable column/cells |
+
+### `TreeSettings`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Enable hierarchical row support |
+| `childrenKey`| `string` | `'children'`| Key in data containing child rows |
+| `indentSize` | `number` | `20` | Pixels of indentation per level |
+| `expandColumnKey`| `string` | `First Col` | Which column displays the toggle |
+| `defaultExpanded`| `boolean` | `false` | Initial expansion state |
+
+### `ToolbarSettings`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Enable the toolbar |
+| `position` | `'top' \| 'bottom'` | `'top'` | Toolbar vertical placement |
+| `items` | `(ToolbarItem \| 'search' \| 'download' \| 'separator')[]` | `['search', 'download']` | Items to display |
+| `downloadOptions`| `('csv' \| 'xlsx' \| 'pdf' \| 'tsv')[]` | `['csv', 'xlsx']` | Available export formats |
 
 ---
 
@@ -346,14 +368,84 @@ Tablez provides granular control over cell interactivity:
 
 Both states can be applied to a **Column**, an entire **Row**, or dynamically based on the **Record**.
 
-### Context Menu & Shortcuts
-The built-in context menu supports advanced actions and keyboard shortcuts:
-- **Copy Sub-menu**:
-    - `Copy Cell`: Copies the current cell value.
-    - `Copy Table (with Headers)`: Exports the entire table as TSV with headers.
-    - `Copy Table (no Headers)`: Exports the table data only.
-- **Formula Persistence**: When copying, the raw formula string is preserved instead of the calculated value.
 - **Shortcuts**: Common actions have macOS-aware shortcuts (e.g., `⌘C`, `⌘V`, `⌘Z`).
+
+---
+
+## 🌳 Hierarchical Row Expansion (Tree View)
+
+Tablez supports deeply nested data structures while maintaining full virtualization and performance.
+
+### Usage
+Simply provide nested data and enable the feature.
+
+```tsx
+const data = [
+  { 
+    id: 1, 
+    name: 'Parent', 
+    children: [
+      { id: 2, name: 'Child A' },
+      { id: 3, name: 'Child B' }
+    ] 
+  }
+];
+
+<Table
+  data={data}
+  settings={{
+    treeSettings: {
+      enabled: true,
+      expandColumnKey: 'name'
+    }
+  }}
+/>
+```
+
+### Features:
+- **Bottom-Up Search**: When searching, parents are automatically kept visible if any of their children match.
+- **Auto-Expansion**: Table automatically expands branches when a search is active to reveal matches.
+- **Level-Based Sorting**: Sibling rows are sorted independently at every level.
+
+---
+
+## 🛠️ Advanced Toolbar
+
+The built-in toolbar provides essential utilities like global search and multi-format data export.
+
+### Configuration
+You can customize built-in items or add your own.
+
+```tsx
+<Table
+  data={data}
+  settings={{
+    toolbar: {
+      enabled: true,
+      items: [
+        { 
+          key: 'search', 
+          label: 'Filter records...', 
+          style: { maxWidth: 300 } 
+        },
+        'separator',
+        { 
+          key: 'my-action', 
+          label: 'Special Action', 
+          onClick: (data) => console.log(data) 
+        },
+        'download'
+      ],
+      downloadOptions: ['csv', 'xlsx', 'pdf']
+    }
+  }}
+/>
+```
+
+### Built-in Items:
+- `'search'`: Global text search across all columns.
+- `'download'`: Export data as CSV, Excel, PDF, or TSV.
+- `'separator'`: A visual divider between items.
 
 ## 🧪 Testing
 
