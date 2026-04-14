@@ -202,6 +202,97 @@ export const flattenTree = <T extends Record<string, any>>(
   return result;
 };
 
+export interface GroupRow<T> {
+  __isGroupRow: true;
+  __groupKey: string | number;
+  __groupValue: any;
+  __groupColumnKey: string;
+  __groupRows: T[];
+  __level: number;
+  __expanded: boolean;
+  __hasChildren: boolean;
+  [key: string]: any;
+}
+
+/**
+ * Groups flat data by one or more column keys.
+ * Returns an interleaved array of group-header rows and data rows.
+ */
+export const groupData = <T extends Record<string, any>>(
+  data: T[],
+  groupByKeys: string[],
+  expandedGroupKeys: Set<string | number>,
+  columns: ColumnDef[],
+): (T | GroupRow<T>)[] => {
+  if (groupByKeys.length === 0) return data;
+
+  const primaryKey = groupByKeys[0];
+
+  // Group data by primary key
+  const groups = new Map<any, T[]>();
+  data.forEach((row) => {
+    const val = row[primaryKey];
+    const key = val === undefined || val === null ? '' : String(val);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(row);
+  });
+
+  const result: (T | GroupRow<T>)[] = [];
+
+  groups.forEach((rows, groupKey) => {
+    const groupValue = rows[0][primaryKey];
+    const isExpanded = expandedGroupKeys.has(groupKey);
+
+    // Compute aggregates for this group
+    const aggregates: Record<string, any> = {};
+    columns.forEach((col) => {
+      const aggCol = col as ColumnDef & { aggregate?: string };
+      if (!aggCol.aggregate) return;
+      const nums = rows.map((r) => parseFloat(r[col.key])).filter((v) => !isNaN(v));
+      if (nums.length === 0) return;
+      switch (aggCol.aggregate) {
+        case 'sum':
+          aggregates[col.key] = nums.reduce((a, b) => a + b, 0);
+          break;
+        case 'avg':
+          aggregates[col.key] = nums.reduce((a, b) => a + b, 0) / nums.length;
+          break;
+        case 'count':
+          aggregates[col.key] = nums.length;
+          break;
+        case 'min':
+          aggregates[col.key] = Math.min(...nums);
+          break;
+        case 'max':
+          aggregates[col.key] = Math.max(...nums);
+          break;
+      }
+    });
+
+    const groupRow: GroupRow<T> = {
+      __isGroupRow: true,
+      __groupKey: groupKey,
+      __groupValue: groupValue,
+      __groupColumnKey: primaryKey,
+      __groupRows: rows,
+      __level: 0,
+      __expanded: isExpanded,
+      __hasChildren: true,
+      ...aggregates,
+    };
+
+    result.push(groupRow);
+
+    if (isExpanded) {
+      rows.forEach((row) =>
+        result.push({ ...row, __level: 1, __hasChildren: false, __expanded: false } as any),
+      );
+    }
+  });
+
+  return result;
+};
+
 /**
  * Calculates sticky offsets for pinned columns.
  * Framework agnostic.

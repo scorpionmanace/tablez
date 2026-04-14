@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import type { MouseEvent as ReactMouseEventGeneric } from 'react';
 import { createPortal } from 'react-dom';
 import type { FC, UIEvent, MouseEvent as ReactMouseEvent } from 'react';
 import type {
@@ -15,8 +16,12 @@ import { Header } from '../Header/Header';
 import { Row } from './Row';
 import { ContextMenu, DEFAULT_SHORTCUTS } from './ContextMenu';
 import { Toolbar } from './Toolbar';
+import { Pagination } from './Pagination';
+import { StatusBar } from './StatusBar';
+import { DetailRow } from './DetailRow';
+import { SidePanel } from './SidePanel';
 import { defaultTheme } from '../Theme/theme';
-import { calculateVirtualization, processData, flattenTree } from '../core/engine';
+import { calculateVirtualization, processData, flattenTree, groupData } from '../core/engine';
 
 export const Table = <T extends Record<string, any>>({
   data,
@@ -29,8 +34,11 @@ export const Table = <T extends Record<string, any>>({
   onColumnOrderChange,
   onCellEdit,
   onDataChange,
+  onRowSelect,
+  onRowReorder,
   sortState: propSortState,
   filters: propFilters,
+  selectedRows: propSelectedRows,
   components = {},
 }: TableProps<T>) => {
   // Extract settings with defaults
@@ -67,15 +75,26 @@ export const Table = <T extends Record<string, any>>({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [expandedKeys, setExpandedKeys] = useState<Set<string | number>>(new Set());
-  const { treeSettings = {} } = settings;
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string | number>>(new Set());
+  const [expandedDetailKeys, setExpandedDetailKeys] = useState<Set<string | number>>(new Set());
+  const { treeSettings = {}, selection } = settings;
+
+  // ── Row Selection ──────────────────────────────────────────────
+  const [internalSelectedKeys, setInternalSelectedKeys] = useState<Set<string | number>>(new Set());
+  const selectedKeys = propSelectedRows ? new Set(propSelectedRows) : internalSelectedKeys;
+
+  // Shared row-key resolver (used by tree toggle + selection)
+  const getRowKey = useCallback(
+    (item: T): string | number => {
+      if (typeof rowKey === 'function') return rowKey(item);
+      if (rowKey && (item as any)[rowKey] !== undefined) return (item as any)[rowKey];
+      return (item as any).id ?? data.indexOf(item);
+    },
+    [rowKey, data],
+  );
 
   const toggleRow = useCallback(
     (record: T) => {
-      const getRowKey = (item: T) => {
-        if (typeof rowKey === 'function') return rowKey(item);
-        if (rowKey && (item as any)[rowKey] !== undefined) return (item as any)[rowKey];
-        return (item as any).id ?? data.indexOf(item);
-      };
       const key = getRowKey(record);
       setExpandedKeys((prev) => {
         const next = new Set(prev);
@@ -84,7 +103,125 @@ export const Table = <T extends Record<string, any>>({
         return next;
       });
     },
-    [rowKey, data],
+    [getRowKey],
+  );
+
+  const handleDetailToggle = useCallback(
+    (record: T) => {
+      const key = getRowKey(record);
+      setExpandedDetailKeys((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    },
+    [getRowKey],
+  );
+
+  // processedData ref — populated after processedData memo, used in selection handlers
+  const processedDataRef = useRef<T[]>([]);
+
+  // ── Cell Range Selection ───────────────────────────────────────
+  const [rangeStart, setRangeStart] = useState<{ row: number; col: number } | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<{ row: number; col: number } | null>(null);
+  const [isRangeSelecting, setIsRangeSelecting] = useState(false);
+
+  const isCellInRange = useCallback(
+    (rowIdx: number, colIdx: number): boolean => {
+      if (!settings.enableRangeSelection || !rangeStart || !rangeEnd) return false;
+      const minRow = Math.min(rangeStart.row, rangeEnd.row);
+      const maxRow = Math.max(rangeStart.row, rangeEnd.row);
+      const minCol = Math.min(rangeStart.col, rangeEnd.col);
+      const maxCol = Math.max(rangeStart.col, rangeEnd.col);
+      return rowIdx >= minRow && rowIdx <= maxRow && colIdx >= minCol && colIdx <= maxCol;
+    },
+    [settings.enableRangeSelection, rangeStart, rangeEnd],
+  );
+
+  const handleCellMouseDown = useCallback(
+    (rowIdx: number, colIdx: number, e: React.MouseEvent) => {
+      if (!settings.enableRangeSelection) return;
+      e.preventDefault();
+      if (e.shiftKey && rangeStart) {
+        setRangeEnd({ row: rowIdx, col: colIdx });
+      } else {
+        setRangeStart({ row: rowIdx, col: colIdx });
+        setRangeEnd({ row: rowIdx, col: colIdx });
+        setIsRangeSelecting(true);
+      }
+    },
+    [settings.enableRangeSelection, rangeStart],
+  );
+
+  const handleCellMouseEnter = useCallback(
+    (rowIdx: number, colIdx: number) => {
+      if (!settings.enableRangeSelection || !isRangeSelecting) return;
+      setRangeEnd({ row: rowIdx, col: colIdx });
+    },
+    [settings.enableRangeSelection, isRangeSelecting],
+  );
+
+  // Fill handle: fill the first column's first row value into the range
+  const handleFillRange = useCallback(() => {
+    if (!settings.enableFillHandle || !rangeStart || !rangeEnd || !onCellEdit) return;
+    const flatRows = processedDataRef.current;
+    const startRow = Math.min(rangeStart.row, rangeEnd.row);
+    const endRow = Math.max(rangeStart.row, rangeEnd.row);
+    const startCol = Math.min(rangeStart.col, rangeEnd.col);
+    const endCol = Math.max(rangeStart.col, rangeEnd.col);
+    const sourceRecord = flatRows[startRow];
+    const sourceCol = columns[startCol];
+    if (!sourceRecord || !sourceCol) return;
+    const fillValue = sourceRecord[sourceCol.key];
+    for (let r = startRow; r <= endRow; r++) {
+      for (let c = startCol; c <= endCol; c++) {
+        if (r === startRow && c === startCol) continue;
+        const row = flatRows[r];
+        const col = columns[c];
+        if (row && col) onCellEdit(row, col.key, fillValue);
+      }
+    }
+  }, [settings.enableFillHandle, rangeStart, rangeEnd, columns, onCellEdit]);
+
+  useEffect(() => {
+    if (!settings.enableRangeSelection) return;
+    const up = () => setIsRangeSelecting(false);
+    window.addEventListener('mouseup', up);
+    return () => window.removeEventListener('mouseup', up);
+  }, [settings.enableRangeSelection]);
+
+  // ── Row Dragging ───────────────────────────────────────────────
+  const [dragFromIndex, setDragFromIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleRowDragStart = useCallback((index: number) => setDragFromIndex(index), []);
+  const handleRowDragOver = useCallback((index: number) => setDragOverIndex(index), []);
+  const handleGroupToggle = useCallback((groupKey: string | number) => {
+    setExpandedGroupKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  }, []);
+
+  const handleRowDrop = useCallback(
+    (toIndex: number) => {
+      if (dragFromIndex === null || dragFromIndex === toIndex) {
+        setDragFromIndex(null);
+        setDragOverIndex(null);
+        return;
+      }
+      const newData = [...data];
+      const [moved] = newData.splice(dragFromIndex, 1);
+      newData.splice(toIndex, 0, moved);
+      setDragFromIndex(null);
+      setDragOverIndex(null);
+      if (onRowReorder) onRowReorder(newData);
+      else if (onDataChange) onDataChange(newData);
+    },
+    [dragFromIndex, data, onRowReorder, onDataChange],
   );
 
   // Context Menu State
@@ -262,12 +399,6 @@ export const Table = <T extends Record<string, any>>({
   const processedData = useMemo(() => {
     if (mode === 'server' || !treeSettings.enabled) return internalProcessedData;
 
-    const getRowKey = (record: T) => {
-      if (typeof rowKey === 'function') return rowKey(record);
-      if (rowKey && (record as any)[rowKey] !== undefined) return (record as any)[rowKey];
-      return (record as any).id ?? data.indexOf(record);
-    };
-
     const isSearching = Object.values(filters).some((v) => !!v);
 
     return flattenTree(
@@ -284,20 +415,115 @@ export const Table = <T extends Record<string, any>>({
     treeSettings.enabled,
     treeSettings.childrenKey,
     expandedKeys,
-    rowKey,
-    data,
+    getRowKey,
     filters,
   ]);
 
+  // Apply grouping if configured
+  const finalProcessedData = useMemo(() => {
+    if (!settings.groupBy?.length) return processedData;
+    return groupData(processedData, settings.groupBy, expandedGroupKeys, columns as any) as T[];
+  }, [processedData, settings.groupBy, expandedGroupKeys, columns]);
+
+  // Keep ref in sync so selection handlers can access current processedData without stale closure
+  useEffect(() => {
+    processedDataRef.current = finalProcessedData;
+  });
+
+  // ── Selection handlers (defined after processedData) ───────────
+  const handleRowSelect = useCallback(
+    (record: T, e?: ReactMouseEventGeneric) => {
+      if (!selection) return;
+      const key = getRowKey(record);
+      const mode = selection.mode ?? 'multi';
+
+      setInternalSelectedKeys((prev) => {
+        const next = new Set(prev);
+        if (mode === 'single') {
+          if (next.has(key)) {
+            next.clear();
+          } else {
+            next.clear();
+            next.add(key);
+          }
+        } else {
+          if (e?.shiftKey && prev.size > 0) {
+            const flatData = processedDataRef.current;
+            const lastKey = [...prev].at(-1);
+            const lastIdx = flatData.findIndex((r) => getRowKey(r) === lastKey);
+            const currIdx = flatData.findIndex((r) => getRowKey(r) === key);
+            if (lastIdx !== -1 && currIdx !== -1) {
+              const [from, to] = lastIdx < currIdx ? [lastIdx, currIdx] : [currIdx, lastIdx];
+              for (let i = from; i <= to; i++) {
+                next.add(getRowKey(flatData[i]));
+              }
+            } else {
+              if (next.has(key)) {
+                next.delete(key);
+              } else {
+                next.add(key);
+              }
+            }
+          } else {
+            if (next.has(key)) {
+              next.delete(key);
+            } else {
+              next.add(key);
+            }
+          }
+        }
+        if (onRowSelect) {
+          const selected = !prev.has(key);
+          onRowSelect([...next], record, selected);
+        }
+        return next;
+      });
+    },
+    [selection, getRowKey, onRowSelect],
+  );
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (!selection) return;
+      const flat = processedDataRef.current;
+      setInternalSelectedKeys(() => {
+        const next = checked ? new Set(flat.map(getRowKey)) : new Set<string | number>();
+        if (onRowSelect && flat[0]) {
+          onRowSelect([...next], flat[0], checked);
+        }
+        return next;
+      });
+    },
+    [selection, getRowKey, onRowSelect],
+  );
+
+  // ── Pagination ─────────────────────────────────────────────────
+  const paginationCfg = settings.pagination;
+  const paginationEnabled = !!paginationCfg?.enabled;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(paginationCfg?.pageSize ?? 25);
+
+  // Reset page when data or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, sortState]);
+
+  const paginatedData = useMemo(() => {
+    if (!paginationEnabled) return finalProcessedData;
+    const start = (currentPage - 1) * pageSize;
+    return finalProcessedData.slice(start, start + pageSize);
+  }, [paginationEnabled, finalProcessedData, currentPage, pageSize]);
+
   const { frozenData, scrolledData } = useMemo(() => {
+    const source = paginatedData;
     if (settings.frozenRows && settings.frozenRows > 0) {
       return {
-        frozenData: processedData.slice(0, settings.frozenRows),
-        scrolledData: processedData.slice(settings.frozenRows),
+        frozenData: source.slice(0, settings.frozenRows),
+        scrolledData: source.slice(settings.frozenRows),
       };
     }
-    return { frozenData: [], scrolledData: processedData };
-  }, [processedData, settings.frozenRows]);
+    return { frozenData: [], scrolledData: source };
+  }, [paginatedData, settings.frozenRows]);
 
   const virtualization = useMemo(() => {
     return calculateVirtualization({
@@ -653,9 +879,39 @@ export const Table = <T extends Record<string, any>>({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [settings.contextMenu?.enabled, mergedItems, lastFocused, handleAction, onContextMenuAction]);
 
+  // ── Side Panel ────────────────────────────────────────────────
+  const [sidePanelOpen, setSidePanelOpen] = useState(settings.sidePanel?.defaultOpen ?? false);
+
+  // ── Infinite Scroll ────────────────────────────────────────────
+  const infiniteScrollCfg = settings.infiniteScroll;
+  useEffect(() => {
+    if (!infiniteScrollCfg || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current;
+    const threshold = infiniteScrollCfg.threshold ?? 100;
+    const onScroll = () => {
+      if (infiniteScrollCfg.loadingMore || infiniteScrollCfg.hasMore === false) return;
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      if (scrollHeight - scrollTop - clientHeight < threshold) {
+        infiniteScrollCfg.onLoadMore();
+      }
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [infiniteScrollCfg]);
+
+  const checkboxWidth = selection?.checkboxWidth ?? 40;
+  const showRowNumbers = settings.showRowNumbers ?? false;
+  const rowNumberWidth = settings.rowNumberWidth ?? 50;
+
+  // Visible columns (exclude hidden ones for rendering)
+  const visibleColumns = useMemo(() => columns.filter((c) => !c.hidden), [columns]);
+
   const totalWidth = useMemo(() => {
-    return columns.reduce((acc, col) => acc + (col.width ?? 150), 0);
-  }, [columns]);
+    let base = visibleColumns.reduce((acc, col) => acc + (col.width ?? 150), 0);
+    if (selection) base += checkboxWidth;
+    if (showRowNumbers) base += rowNumberWidth;
+    return base;
+  }, [visibleColumns, selection, checkboxWidth, showRowNumbers, rowNumberWidth]);
 
   return (
     <div
@@ -672,115 +928,238 @@ export const Table = <T extends Record<string, any>>({
     >
       {!!settings.toolbar?.enabled && (settings.toolbar?.position ?? 'top') === 'top' && (
         <Toolbar
-          data={processedData}
+          data={finalProcessedData}
           columns={columns}
           settings={settings.toolbar}
           theme={theme}
           onFilter={handleFilter}
           filters={filters}
+          onColumnsPanel={() => setSidePanelOpen((v) => !v)}
+          onImport={onDataChange}
         />
       )}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className={`tablez-container ${className ?? ''}`}
-        style={{
-          flex: 1,
-          overflow: 'auto',
-          position: 'relative',
-        }}
-      >
-        <table
-          className={className}
+      {!!paginationEnabled &&
+        (paginationCfg?.position === 'top' || paginationCfg?.position === 'both') && (
+          <Pagination
+            page={currentPage}
+            pageSize={pageSize}
+            total={finalProcessedData.length}
+            theme={theme}
+            pageSizeOptions={paginationCfg?.pageSizeOptions}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={
+              paginationCfg?.showPageSizeSelector !== false ? setPageSize : undefined
+            }
+          />
+        )}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className={`tablez-container ${className ?? ''}`}
           style={{
-            ...theme.table,
-            opacity: loading ? 0.6 : 1,
-            tableLayout: 'fixed',
-            width: totalWidth,
-            minWidth: '100%',
-            borderCollapse: 'collapse',
+            flex: 1,
+            overflow: 'auto',
+            position: 'relative',
           }}
         >
-          <HeaderComponent
-            columns={columns}
-            theme={theme}
-            resizable={resizable}
-            onResize={handleResize}
-            onSort={handleSort}
-            onFilter={handleFilter}
-            onFreeze={handleFreeze}
-            sortState={sortState}
-            filters={filters}
-            showColumnBorders={showColumnBorders}
-            draggableColumns={draggableColumns}
-            onReorder={handleReorder}
-            onColumnUpdate={(newCols: Column<T>[]) => {
-              setColumns(newCols);
-              if (onColumnUpdate) onColumnUpdate(newCols);
-              setEditingHeaderKey(null);
+          <table
+            role="grid"
+            aria-label={settings.ariaLabel}
+            aria-busy={loading}
+            aria-rowcount={finalProcessedData.length}
+            className={className}
+            style={{
+              ...theme.table,
+              opacity: loading ? 0.6 : 1,
+              tableLayout: 'fixed',
+              width: totalWidth,
+              minWidth: '100%',
+              borderCollapse: 'collapse',
             }}
-            managedEditingKey={editingHeaderKey}
-          />
-          <tbody>
-            {/* Frozen Rows */}
-            {frozenData.map((record: T, idx: number) => {
-              const key = rowKey
-                ? typeof rowKey === 'function'
-                  ? rowKey(record)
-                  : record[rowKey]
-                : `frozen-${idx}`;
+          >
+            <HeaderComponent
+              columns={visibleColumns}
+              theme={theme}
+              resizable={resizable}
+              onResize={(idx: number, w: number) => {
+                // idx is relative to visibleColumns; map back to full columns
+                const vcol = visibleColumns[idx];
+                const fullIdx = columns.findIndex((c) => c.key === vcol?.key);
+                if (fullIdx !== -1) handleResize(fullIdx, w);
+              }}
+              onSort={handleSort}
+              onFilter={handleFilter}
+              onFreeze={handleFreeze}
+              sortState={sortState}
+              filters={filters}
+              showColumnBorders={showColumnBorders}
+              draggableColumns={draggableColumns}
+              onReorder={handleReorder}
+              onColumnUpdate={(newCols: Column<T>[]) => {
+                setColumns(newCols);
+                if (onColumnUpdate) onColumnUpdate(newCols);
+                setEditingHeaderKey(null);
+              }}
+              managedEditingKey={editingHeaderKey}
+              selection={selection}
+              allSelected={
+                finalProcessedData.length > 0 &&
+                finalProcessedData.every((r) => selectedKeys.has(getRowKey(r)))
+              }
+              someSelected={finalProcessedData.some((r) => selectedKeys.has(getRowKey(r)))}
+              onSelectAll={handleSelectAll}
+              checkboxWidth={checkboxWidth}
+              showRowNumbers={showRowNumbers}
+              rowNumberWidth={rowNumberWidth}
+              columnGroups={settings.columnGroups}
+              floatingFilters={settings.floatingFilters}
+            />
+            <tbody>
+              {/* Frozen Rows */}
+              {frozenData.map((record: T, idx: number) => {
+                const key = rowKey
+                  ? typeof rowKey === 'function'
+                    ? rowKey(record)
+                    : record[rowKey]
+                  : `frozen-${idx}`;
 
-              const stickyTop = 40 + idx * rowHeight;
-              const rReadOnly =
-                typeof rowSettings?.readOnly === 'function'
-                  ? rowSettings.readOnly(record)
-                  : !!rowSettings?.readOnly;
-              const rDisabled =
-                typeof rowSettings?.disabled === 'function'
-                  ? rowSettings.disabled(record)
-                  : !!rowSettings?.disabled;
+                const stickyTop = 40 + idx * rowHeight;
+                const rReadOnly =
+                  typeof rowSettings?.readOnly === 'function'
+                    ? rowSettings.readOnly(record)
+                    : !!rowSettings?.readOnly;
+                const rDisabled =
+                  typeof rowSettings?.disabled === 'function'
+                    ? rowSettings.disabled(record)
+                    : !!rowSettings?.disabled;
 
-              return (
-                <RowComponent
-                  key={key}
-                  record={record}
-                  columns={columns}
-                  theme={theme}
-                  onClick={onRowClick}
-                  onCellEdit={onCellEdit}
-                  onContextMenu={onContextMenu}
-                  onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
-                  index={idx}
-                  className={rowClassName}
-                  showColumnBorders={showColumnBorders}
-                  height={rowHeight}
-                  readOnly={rReadOnly}
-                  disabled={rDisabled}
-                  onToggle={toggleRow}
-                  treeSettings={treeSettings}
-                  style={{
-                    position: 'sticky',
-                    top: stickyTop,
-                    zIndex: 30,
-                    backgroundColor: theme.tokens?.backgroundColor ?? '#fff',
-                    boxShadow: idx === frozenData.length - 1 ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
-                  }}
-                />
-              );
-            })}
+                return (
+                  <RowComponent
+                    key={key}
+                    record={record}
+                    columns={visibleColumns}
+                    theme={theme}
+                    onClick={onRowClick}
+                    onCellEdit={onCellEdit}
+                    onContextMenu={onContextMenu}
+                    onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
+                    index={idx}
+                    className={rowClassName}
+                    showColumnBorders={showColumnBorders}
+                    height={rowHeight}
+                    readOnly={rReadOnly}
+                    disabled={rDisabled}
+                    onToggle={toggleRow}
+                    onGroupToggle={handleGroupToggle}
+                    treeSettings={treeSettings}
+                    onCellMouseDown={
+                      settings.enableRangeSelection ? handleCellMouseDown : undefined
+                    }
+                    onCellMouseEnter={
+                      settings.enableRangeSelection ? handleCellMouseEnter : undefined
+                    }
+                    isCellInRange={settings.enableRangeSelection ? isCellInRange : undefined}
+                    enableFillHandle={settings.enableFillHandle}
+                    onFillHandle={handleFillRange}
+                    selection={selection}
+                    isSelected={selectedKeys.has(getRowKey(record))}
+                    onSelect={handleRowSelect}
+                    checkboxWidth={checkboxWidth}
+                    showRowNumbers={showRowNumbers}
+                    rowNumber={idx + 1}
+                    rowNumberWidth={rowNumberWidth}
+                    draggableRows={settings.draggableRows}
+                    rowDragIndex={idx}
+                    onRowDragStart={handleRowDragStart}
+                    onRowDragOver={handleRowDragOver}
+                    onRowDrop={handleRowDrop}
+                    isDragOver={dragOverIndex === idx}
+                    style={{
+                      position: 'sticky',
+                      top: stickyTop,
+                      zIndex: 30,
+                      backgroundColor: theme.tokens?.backgroundColor ?? '#fff',
+                      boxShadow:
+                        idx === frozenData.length - 1 ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                    }}
+                  />
+                );
+              })}
 
-            {virtualized ? (
-              <>
-                {offsetY > 0 && (
-                  <tr style={{ height: offsetY, border: 'none' }} aria-hidden="true">
-                    <td
-                      colSpan={columns.length}
-                      style={{ padding: 0, border: 'none', height: offsetY }}
-                    />
-                  </tr>
-                )}
-                {visibleData.map((record: T, idx: number) => {
-                  const originalIndex = startIndex + idx;
+              {virtualized ? (
+                <>
+                  {offsetY > 0 && (
+                    <tr style={{ height: offsetY, border: 'none' }} aria-hidden="true">
+                      <td
+                        colSpan={visibleColumns.length}
+                        style={{ padding: 0, border: 'none', height: offsetY }}
+                      />
+                    </tr>
+                  )}
+                  {visibleData.map((record: T, idx: number) => {
+                    const originalIndex = startIndex + idx;
+                    const key = rowKey
+                      ? typeof rowKey === 'function'
+                        ? rowKey(record)
+                        : record[rowKey]
+                      : originalIndex;
+
+                    const rReadOnly =
+                      typeof rowSettings?.readOnly === 'function'
+                        ? rowSettings.readOnly(record)
+                        : !!rowSettings?.readOnly;
+                    const rDisabled =
+                      typeof rowSettings?.disabled === 'function'
+                        ? rowSettings.disabled(record)
+                        : !!rowSettings?.disabled;
+
+                    return (
+                      <RowComponent
+                        key={key}
+                        record={record}
+                        columns={visibleColumns}
+                        theme={theme}
+                        onClick={onRowClick}
+                        onCellEdit={onCellEdit}
+                        onContextMenu={onContextMenu}
+                        onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
+                        index={originalIndex}
+                        className={rowClassName}
+                        showColumnBorders={showColumnBorders}
+                        height={rowHeight}
+                        readOnly={rReadOnly}
+                        disabled={rDisabled}
+                        onToggle={toggleRow}
+                        treeSettings={treeSettings}
+                        selection={selection}
+                        isSelected={selectedKeys.has(getRowKey(record))}
+                        onSelect={handleRowSelect}
+                        checkboxWidth={checkboxWidth}
+                        showRowNumbers={showRowNumbers}
+                        rowNumber={(settings.frozenRows ?? 0) + originalIndex + 1}
+                        rowNumberWidth={rowNumberWidth}
+                        draggableRows={settings.draggableRows}
+                        rowDragIndex={originalIndex}
+                        onRowDragStart={handleRowDragStart}
+                        onRowDragOver={handleRowDragOver}
+                        onRowDrop={handleRowDrop}
+                        isDragOver={dragOverIndex === originalIndex}
+                      />
+                    );
+                  })}
+                  {bottomOffsetY > 0 && (
+                    <tr style={{ height: bottomOffsetY, border: 'none' }} aria-hidden="true">
+                      <td
+                        colSpan={visibleColumns.length}
+                        style={{ padding: 0, border: 'none', height: bottomOffsetY }}
+                      />
+                    </tr>
+                  )}
+                </>
+              ) : (
+                scrolledData.map((record: T, idx: number) => {
+                  const originalIndex = (settings.frozenRows ?? 0) + idx;
                   const key = rowKey
                     ? typeof rowKey === 'function'
                       ? rowKey(record)
@@ -797,119 +1176,167 @@ export const Table = <T extends Record<string, any>>({
                       : !!rowSettings?.disabled;
 
                   return (
-                    <RowComponent
-                      key={key}
-                      record={record}
-                      columns={columns}
-                      theme={theme}
-                      onClick={onRowClick}
-                      onCellEdit={onCellEdit}
-                      onContextMenu={onContextMenu}
-                      onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
-                      index={originalIndex}
-                      className={rowClassName}
-                      showColumnBorders={showColumnBorders}
-                      height={rowHeight}
-                      readOnly={rReadOnly}
-                      disabled={rDisabled}
-                      onToggle={toggleRow}
-                      treeSettings={treeSettings}
-                    />
+                    <>
+                      <RowComponent
+                        key={key}
+                        record={record}
+                        columns={visibleColumns}
+                        theme={theme}
+                        onClick={
+                          settings.masterDetail && !(record as any).__isGroupRow
+                            ? (r: T) => {
+                                handleDetailToggle(r);
+                                onRowClick?.(r);
+                              }
+                            : onRowClick
+                        }
+                        onCellEdit={onCellEdit}
+                        onContextMenu={onContextMenu}
+                        onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
+                        index={originalIndex}
+                        className={rowClassName}
+                        showColumnBorders={showColumnBorders}
+                        height={rowHeight}
+                        readOnly={rReadOnly}
+                        disabled={rDisabled}
+                        onToggle={toggleRow}
+                        treeSettings={treeSettings}
+                        selection={selection}
+                        isSelected={selectedKeys.has(getRowKey(record))}
+                        onSelect={handleRowSelect}
+                        checkboxWidth={checkboxWidth}
+                        showRowNumbers={showRowNumbers}
+                        rowNumber={originalIndex + 1}
+                        rowNumberWidth={rowNumberWidth}
+                        draggableRows={settings.draggableRows}
+                        rowDragIndex={originalIndex}
+                        onRowDragStart={handleRowDragStart}
+                        onRowDragOver={handleRowDragOver}
+                        onRowDrop={handleRowDrop}
+                        isDragOver={dragOverIndex === originalIndex}
+                        onGroupToggle={handleGroupToggle}
+                        animateRows={settings.animateRows}
+                      />
+                      {!!settings.masterDetail &&
+                        !(record as any).__isGroupRow &&
+                        expandedDetailKeys.has(getRowKey(record)) && (
+                          <DetailRow
+                            key={`detail-${key}`}
+                            colSpan={
+                              visibleColumns.length + (selection ? 1 : 0) + (showRowNumbers ? 1 : 0)
+                            }
+                            record={record}
+                            theme={theme}
+                            detailRenderer={settings.masterDetail.detailRenderer}
+                          />
+                        )}
+                    </>
                   );
-                })}
-                {bottomOffsetY > 0 && (
-                  <tr style={{ height: bottomOffsetY, border: 'none' }} aria-hidden="true">
-                    <td
-                      colSpan={columns.length}
-                      style={{ padding: 0, border: 'none', height: bottomOffsetY }}
-                    />
-                  </tr>
-                )}
-              </>
-            ) : (
-              scrolledData.map((record: T, idx: number) => {
-                const originalIndex = (settings.frozenRows ?? 0) + idx;
-                const key = rowKey
-                  ? typeof rowKey === 'function'
-                    ? rowKey(record)
-                    : record[rowKey]
-                  : originalIndex;
+                })
+              )}
+              {/* Infinite scroll loading indicator */}
+              {!!infiniteScrollCfg?.loadingMore && (
+                <tr aria-hidden="true">
+                  <td
+                    colSpan={visibleColumns.length + (selection ? 1 : 0) + (showRowNumbers ? 1 : 0)}
+                    style={{
+                      textAlign: 'center',
+                      padding: '12px',
+                      color: theme.tokens?.textColor ?? '#94a3b8',
+                      fontSize: theme.tokens?.fontSize ?? '13px',
+                      opacity: 0.7,
+                    }}
+                  >
+                    Loading more…
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
 
-                const rReadOnly =
-                  typeof rowSettings?.readOnly === 'function'
-                    ? rowSettings.readOnly(record)
-                    : !!rowSettings?.readOnly;
-                const rDisabled =
-                  typeof rowSettings?.disabled === 'function'
-                    ? rowSettings.disabled(record)
-                    : !!rowSettings?.disabled;
-
-                return (
-                  <RowComponent
-                    key={key}
-                    record={record}
-                    columns={columns}
-                    theme={theme}
-                    onClick={onRowClick}
-                    onCellEdit={onCellEdit}
-                    onContextMenu={onContextMenu}
-                    onFocus={(col: Column<T>) => setLastFocused({ record, column: col })}
-                    index={originalIndex}
-                    className={rowClassName}
-                    showColumnBorders={showColumnBorders}
-                    height={rowHeight}
-                    readOnly={rReadOnly}
-                    disabled={rDisabled}
-                    onToggle={toggleRow}
-                    treeSettings={treeSettings}
-                  />
-                );
-              })
+          {!!contextMenuState.visible &&
+            !!contextMenuState.record &&
+            !!contextMenuState.column &&
+            createPortal(
+              <ContextMenu
+                x={contextMenuState.x}
+                y={contextMenuState.y}
+                record={contextMenuState.record}
+                column={contextMenuState.column}
+                items={mergedItems}
+                onAction={onContextMenuAction}
+                onClose={() => setContextMenuState((prev) => ({ ...prev, visible: false }))}
+                theme={theme}
+                isReadOnly={
+                  (typeof rowSettings?.readOnly === 'function'
+                    ? rowSettings.readOnly(contextMenuState.record)
+                    : !!rowSettings?.readOnly) ||
+                  (typeof contextMenuState.column.readOnly === 'function'
+                    ? contextMenuState.column.readOnly(contextMenuState.record)
+                    : !!contextMenuState.column.readOnly)
+                }
+                isDisabled={
+                  (typeof rowSettings?.disabled === 'function'
+                    ? rowSettings.disabled(contextMenuState.record)
+                    : !!rowSettings?.disabled) ||
+                  (typeof contextMenuState.column.disabled === 'function'
+                    ? contextMenuState.column.disabled(contextMenuState.record)
+                    : !!contextMenuState.column.disabled)
+                }
+              />,
+              document.body,
             )}
-          </tbody>
-        </table>
-
-        {!!contextMenuState.visible &&
-          !!contextMenuState.record &&
-          !!contextMenuState.column &&
-          createPortal(
-            <ContextMenu
-              x={contextMenuState.x}
-              y={contextMenuState.y}
-              record={contextMenuState.record}
-              column={contextMenuState.column}
-              items={mergedItems}
-              onAction={onContextMenuAction}
-              onClose={() => setContextMenuState((prev) => ({ ...prev, visible: false }))}
-              theme={theme}
-              isReadOnly={
-                (typeof rowSettings?.readOnly === 'function'
-                  ? rowSettings.readOnly(contextMenuState.record)
-                  : !!rowSettings?.readOnly) ||
-                (typeof contextMenuState.column.readOnly === 'function'
-                  ? contextMenuState.column.readOnly(contextMenuState.record)
-                  : !!contextMenuState.column.readOnly)
-              }
-              isDisabled={
-                (typeof rowSettings?.disabled === 'function'
-                  ? rowSettings.disabled(contextMenuState.record)
-                  : !!rowSettings?.disabled) ||
-                (typeof contextMenuState.column.disabled === 'function'
-                  ? contextMenuState.column.disabled(contextMenuState.record)
-                  : !!contextMenuState.column.disabled)
-              }
-            />,
-            document.body,
-          )}
+        </div>
+        {/* Side Panel */}
+        {!!sidePanelOpen && (
+          <SidePanel
+            columns={columns}
+            theme={theme}
+            width={settings.sidePanel?.width}
+            onColumnsChange={(newCols) => {
+              setColumns(newCols);
+              if (onColumnUpdate) onColumnUpdate(newCols);
+            }}
+            onClose={() => setSidePanelOpen(false)}
+          />
+        )}
       </div>
       {!!settings.toolbar?.enabled && settings.toolbar?.position === 'bottom' && (
         <Toolbar
-          data={processedData}
+          data={finalProcessedData}
           columns={columns}
           settings={settings.toolbar}
           theme={theme}
           onFilter={handleFilter}
           filters={filters}
+          onColumnsPanel={() => setSidePanelOpen((v) => !v)}
+          onImport={onDataChange}
+        />
+      )}
+      {!!paginationEnabled &&
+        (paginationCfg?.position === 'bottom' ||
+          !paginationCfg?.position ||
+          paginationCfg?.position === 'both') && (
+          <Pagination
+            page={currentPage}
+            pageSize={pageSize}
+            total={finalProcessedData.length}
+            theme={theme}
+            pageSizeOptions={paginationCfg?.pageSizeOptions}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={
+              paginationCfg?.showPageSizeSelector !== false ? setPageSize : undefined
+            }
+          />
+        )}
+      {!!settings.statusBar && (
+        <StatusBar
+          data={finalProcessedData}
+          columns={columns}
+          theme={theme}
+          settings={settings.statusBar}
+          selectedCount={internalSelectedKeys.size}
+          totalCount={finalProcessedData.length}
         />
       )}
     </div>

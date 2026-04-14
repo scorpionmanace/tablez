@@ -5,6 +5,7 @@ import type {
   KeyboardEvent,
   DragEvent,
   MouseEvent as ReactMouseEvent,
+  JSX,
 } from 'react';
 import type {
   Column,
@@ -12,6 +13,8 @@ import type {
   TableSortDirection,
   TableSortState,
   TableFilters,
+  SelectionSettings,
+  ColumnGroup,
 } from '../types';
 import { ColumnMenu } from './ColumnMenu';
 import { calculateColumnOffsets } from '../core/engine';
@@ -31,6 +34,19 @@ interface HeaderProps {
   onReorder?: (fromIndex: number, toIndex: number) => void;
   onColumnUpdate?: (columns: Column<any>[]) => void;
   managedEditingKey?: string | null;
+  // Selection
+  selection?: SelectionSettings;
+  allSelected?: boolean;
+  someSelected?: boolean;
+  onSelectAll?: (checked: boolean) => void;
+  checkboxWidth?: number;
+  // Row numbers
+  showRowNumbers?: boolean;
+  rowNumberWidth?: number;
+  // Column groups
+  columnGroups?: ColumnGroup[];
+  // Floating filters
+  floatingFilters?: boolean;
 }
 
 export const Header: FC<HeaderProps> = ({
@@ -48,6 +64,15 @@ export const Header: FC<HeaderProps> = ({
   onReorder,
   onColumnUpdate,
   managedEditingKey,
+  selection,
+  allSelected = false,
+  someSelected = false,
+  onSelectAll,
+  checkboxWidth = 40,
+  showRowNumbers = false,
+  rowNumberWidth = 50,
+  columnGroups,
+  floatingFilters = false,
 }) => {
   const [resizingIndex, setResizingIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -188,9 +213,145 @@ export const Header: FC<HeaderProps> = ({
 
   const { leftOffsets, rightOffsets } = useMemo(() => calculateColumnOffsets(columns), [columns]);
 
+  const showCheckbox = !!selection && (selection.showCheckbox ?? selection.mode !== 'single');
+  const checkboxOnRight = selection?.checkboxPosition === 'right';
+  const borderColor = theme.tokens?.borderColor ?? '#e2e8f0';
+  const primaryColor = theme.tokens?.primaryColor ?? '#3b82f6';
+  const headerBgColor =
+    theme.header?.backgroundColor ?? theme.tokens?.headerBackgroundColor ?? '#fff';
+
+  const checkboxHeaderCell = showCheckbox ? (
+    <th
+      key="__checkbox_header__"
+      style={{
+        width: checkboxWidth,
+        minWidth: checkboxWidth,
+        maxWidth: checkboxWidth,
+        textAlign: 'center',
+        verticalAlign: 'middle',
+        borderRight: showColumnBorders ? `1px solid ${borderColor}` : 'none',
+        backgroundColor: headerBgColor,
+        position: 'sticky',
+        left: !checkboxOnRight ? 0 : undefined,
+        right: checkboxOnRight ? 0 : undefined,
+        zIndex: 51,
+        ...theme.headerCell,
+        padding: '0',
+      }}
+    >
+      {selection?.mode !== 'single' && (
+        <input
+          type="checkbox"
+          checked={allSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = someSelected && !allSelected;
+          }}
+          onChange={(e) => onSelectAll?.(e.target.checked)}
+          style={{ cursor: 'pointer', accentColor: primaryColor, width: 14, height: 14 }}
+        />
+      )}
+    </th>
+  ) : null;
+
+  // Build column-group row — one cell per group (spanning grouped cols) + ungrouped cells
+  const groupRow =
+    columnGroups && columnGroups.length > 0
+      ? (() => {
+          // We'll build cells in column order
+          const cells: JSX.Element[] = [];
+          let i = 0;
+          // leading meta columns (row#, checkbox)
+          const metaSpan = (showRowNumbers ? 1 : 0) + (showCheckbox && !checkboxOnRight ? 1 : 0);
+          if (metaSpan > 0) {
+            cells.push(
+              <th
+                key="__group_meta__"
+                colSpan={metaSpan}
+                style={{
+                  backgroundColor: headerBgColor,
+                  borderRight: showColumnBorders ? `1px solid ${borderColor}` : 'none',
+                  borderBottom: `1px solid ${borderColor}`,
+                  ...theme.headerCell,
+                  padding: '4px 0',
+                }}
+              />,
+            );
+          }
+          while (i < columns.length) {
+            const col = columns[i];
+            const group = columnGroups.find((g) => g.columnKeys.includes(col.key));
+            if (group) {
+              // count consecutive grouped cols
+              const groupCols = columns.filter((c) => group.columnKeys.includes(c.key));
+              cells.push(
+                <th
+                  key={`group_${i}`}
+                  colSpan={groupCols.length}
+                  style={{
+                    textAlign: 'center',
+                    backgroundColor: headerBgColor,
+                    borderRight: showColumnBorders ? `1px solid ${borderColor}` : 'none',
+                    borderBottom: `1px solid ${borderColor}`,
+                    ...theme.headerCell,
+                    ...group.headerStyle,
+                    fontWeight: 'bold',
+                    padding: '4px 8px',
+                  }}
+                  className={group.headerClassName}
+                >
+                  {group.title}
+                </th>,
+              );
+              // skip all columns in this group
+              while (i < columns.length && group.columnKeys.includes(columns[i].key)) i++;
+            } else {
+              cells.push(
+                <th
+                  key={`nogroup_${i}`}
+                  style={{
+                    backgroundColor: headerBgColor,
+                    borderRight: showColumnBorders ? `1px solid ${borderColor}` : 'none',
+                    borderBottom: `1px solid ${borderColor}`,
+                    ...theme.headerCell,
+                    padding: '4px 8px',
+                  }}
+                />,
+              );
+              i++;
+            }
+          }
+          return <tr>{cells}</tr>;
+        })()
+      : null;
+
   return (
-    <thead style={{ ...theme.header, zIndex: 40 }}>
-      <tr>
+    <thead role="rowgroup" style={{ ...theme.header, zIndex: 40 }}>
+      {groupRow}
+      <tr role="row">
+        {!!showRowNumbers && (
+          <th
+            key="__rownum_header__"
+            style={{
+              width: rowNumberWidth,
+              minWidth: rowNumberWidth,
+              maxWidth: rowNumberWidth,
+              textAlign: 'center',
+              borderRight: showColumnBorders ? `1px solid ${borderColor}` : 'none',
+              backgroundColor: headerBgColor,
+              position: 'sticky',
+              left: 0,
+              zIndex: 51,
+              ...theme.headerCell,
+              color: theme.tokens?.headerTextColor ?? '#64748b',
+              opacity: 0.6,
+              fontSize: theme.tokens?.fontSize ?? '12px',
+              userSelect: 'none',
+            }}
+          >
+            #
+          </th>
+        )}
+        {!checkboxOnRight && checkboxHeaderCell}
         {columns.map((col, index) => {
           const isFixed = !!col.fixed;
           const headerBg =
@@ -205,8 +366,17 @@ export const Header: FC<HeaderProps> = ({
 
           const isEditing = editingColumnKey === col.key;
 
+          const ariaSortDir =
+            sortState?.columnKey === col.key
+              ? sortState.direction === 'asc'
+                ? 'ascending'
+                : 'descending'
+              : undefined;
+
           return (
             <th
+              role="columnheader"
+              aria-sort={col.sortable ? (ariaSortDir ?? 'none') : undefined}
               key={col.key || index}
               className={col.headerClassName}
               draggable={!!draggableColumns && !isFixed && col.draggable !== false}
@@ -421,7 +591,93 @@ export const Header: FC<HeaderProps> = ({
             </th>
           );
         })}
+        {!!checkboxOnRight && checkboxHeaderCell}
       </tr>
+      {!!floatingFilters && (
+        <tr>
+          {!!showRowNumbers && (
+            <th
+              style={{
+                width: rowNumberWidth,
+                minWidth: rowNumberWidth,
+                maxWidth: rowNumberWidth,
+                backgroundColor: headerBgColor,
+                borderRight: showColumnBorders ? `1px solid ${borderColor}` : 'none',
+                borderBottom: `1px solid ${borderColor}`,
+                padding: '4px',
+              }}
+            />
+          )}
+          {!!showCheckbox && !checkboxOnRight && (
+            <th
+              style={{
+                width: checkboxWidth,
+                minWidth: checkboxWidth,
+                maxWidth: checkboxWidth,
+                backgroundColor: headerBgColor,
+                borderRight: showColumnBorders ? `1px solid ${borderColor}` : 'none',
+                borderBottom: `1px solid ${borderColor}`,
+                padding: '4px',
+              }}
+            />
+          )}
+          {columns.map((col, index) => {
+            const stickyStyles: CSSProperties = {
+              position: 'sticky',
+              left: col.fixed === 'left' ? leftOffsets[index] : undefined,
+              right: col.fixed === 'right' ? rightOffsets[col.key] : undefined,
+              backgroundColor: headerBgColor,
+              zIndex: col.fixed ? 50 : undefined,
+            };
+            return (
+              <th
+                key={col.key || index}
+                style={{
+                  padding: '4px 6px',
+                  borderRight: showColumnBorders ? `1px solid ${borderColor}` : 'none',
+                  borderBottom: `2px solid ${borderColor}`,
+                  width: col.width,
+                  minWidth: col.width,
+                  maxWidth: col.width,
+                  ...stickyStyles,
+                }}
+              >
+                {col.filterable !== false && (
+                  <input
+                    type={col.searchType === 'number' ? 'number' : 'text'}
+                    placeholder={`Filter…`}
+                    value={filters[col.key] ?? ''}
+                    onChange={(e) => onFilter(col.key, e.target.value)}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      border: `1px solid ${borderColor}`,
+                      borderRadius: '3px',
+                      padding: '2px 6px',
+                      fontSize: theme.tokens?.fontSize ?? '12px',
+                      backgroundColor: theme.tokens?.backgroundColor ?? '#fff',
+                      color: theme.tokens?.textColor ?? '#1e293b',
+                      outline: 'none',
+                    }}
+                  />
+                )}
+              </th>
+            );
+          })}
+          {!!showCheckbox && !!checkboxOnRight && (
+            <th
+              style={{
+                width: checkboxWidth,
+                minWidth: checkboxWidth,
+                maxWidth: checkboxWidth,
+                backgroundColor: headerBgColor,
+                borderBottom: `1px solid ${borderColor}`,
+                padding: '4px',
+              }}
+            />
+          )}
+        </tr>
+      )}
     </thead>
   );
 };

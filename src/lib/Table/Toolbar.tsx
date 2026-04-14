@@ -10,6 +10,8 @@ interface ToolbarProps<T = any> {
   theme: TableTheme;
   onFilter?: (key: string, value: string) => void;
   filters?: Record<string, string>;
+  onColumnsPanel?: () => void;
+  onImport?: (data: T[]) => void;
 }
 
 const DEFAULT_ICONS: Record<string, ReactNode> = {
@@ -53,9 +55,12 @@ export const Toolbar: FC<ToolbarProps> = ({
   theme,
   onFilter,
   filters = {},
+  onColumnsPanel,
+  onImport,
 }) => {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -85,6 +90,57 @@ export const Toolbar: FC<ToolbarProps> = ({
         exportToPDF(data, columns);
         break;
     }
+  };
+
+  const handleImport = (file: File) => {
+    if (!onImport) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        if (!text) return;
+        // Parse CSV/TSV — detect delimiter
+        const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
+        if (lines.length < 2) return;
+        const delimiter = lines[0].includes('\t') ? '\t' : ',';
+        const parseRow = (line: string) => {
+          const cells: string[] = [];
+          let current = '';
+          let inQuotes = false;
+          for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+              if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++;
+              } else inQuotes = !inQuotes;
+            } else if (ch === delimiter && !inQuotes) {
+              cells.push(current);
+              current = '';
+            } else {
+              current += ch;
+            }
+          }
+          cells.push(current);
+          return cells;
+        };
+        const headers = parseRow(lines[0]);
+        const rows = lines.slice(1).map((line) => {
+          const cells = parseRow(line);
+          const row: Record<string, any> = {};
+          headers.forEach((h, i) => {
+            const val = cells[i] ?? '';
+            const num = Number(val);
+            row[h] = val !== '' && !isNaN(num) ? num : val;
+          });
+          return row;
+        });
+        onImport(rows as any[]);
+      } catch (err) {
+        console.error('Failed to parse import file:', err);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const items = settings.items ?? ['search', 'separator', 'download'];
@@ -288,6 +344,84 @@ export const Toolbar: FC<ToolbarProps> = ({
                   ))}
                 </div>
               )}
+            </div>
+          );
+        }
+
+        // Columns panel toggle
+        if (itemKey === 'columns') {
+          const config = isString ? {} : (item as Partial<ToolbarItem>);
+          return (
+            <button
+              key="columns-panel"
+              onClick={onColumnsPanel}
+              style={buttonStyle(false, config.style as CSSProperties)}
+              className={isString ? undefined : (item as Partial<ToolbarItem>).className}
+              title="Show/hide columns"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              <span>
+                {isString ? 'Columns' : ((item as Partial<ToolbarItem>).label ?? 'Columns')}
+              </span>
+            </button>
+          );
+        }
+
+        // Excel import
+        if (itemKey === 'import') {
+          const config = isString ? {} : (item as Partial<ToolbarItem>);
+          return (
+            <div key="import-btn" style={{ position: 'relative' }}>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImport(file);
+                  if (importInputRef.current) importInputRef.current.value = '';
+                }}
+              />
+              <button
+                onClick={() => importInputRef.current?.click()}
+                style={buttonStyle(false, config.style as CSSProperties)}
+                title="Import from Excel/CSV"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span>
+                  {isString ? 'Import' : ((item as Partial<ToolbarItem>).label ?? 'Import')}
+                </span>
+              </button>
             </div>
           );
         }

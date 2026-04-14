@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, memo } from 'react';
+import { useState, useRef, useEffect, memo, useCallback } from 'react';
 import type { FC, CSSProperties, MouseEvent, KeyboardEvent, ChangeEvent } from 'react';
 import type { Column, TableTheme } from '../types';
 import { isImageResult } from '../core/formulas';
 import { formatValue } from '../core/formatter';
 import { Calendar } from '../components/Calendar';
+import { Sparkline } from '../components/Sparkline';
 
 interface CellProps<T> {
   record: T;
@@ -23,6 +24,12 @@ interface CellProps<T> {
   hasChildren?: boolean;
   onToggleTree?: () => void;
   treeSettings?: any;
+  // Range selection
+  onCellMouseDown?: (e: MouseEvent) => void;
+  onCellMouseEnter?: () => void;
+  isInRange?: boolean;
+  enableFillHandle?: boolean;
+  onFillHandle?: () => void;
 }
 
 const CellInner = <T extends Record<string, any>>({
@@ -43,12 +50,25 @@ const CellInner = <T extends Record<string, any>>({
   hasChildren,
   onToggleTree,
   treeSettings,
+  onCellMouseDown,
+  onCellMouseEnter,
+  isInRange = false,
+  enableFillHandle = false,
+  onFillHandle,
 }: CellProps<T>) => {
   const value = record[column.key];
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState<any>(value);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const [cellRect, setCellRect] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [highlighted, setHighlighted] = useState(false);
+  const tooltipTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevValueRef = useRef(value);
   const inputRef = useRef<HTMLInputElement>(null);
+  const tdRef = useRef<HTMLTableCellElement>(null);
 
   const isReadOnly =
     (rowReadOnly ?? false) ||
@@ -72,6 +92,22 @@ const CellInner = <T extends Record<string, any>>({
   useEffect(() => {
     setEditValue(value);
   }, [value]);
+
+  // Change highlighting — flash when value changes
+  useEffect(() => {
+    if (column.highlight && prevValueRef.current !== value && prevValueRef.current !== undefined) {
+      setHighlighted(true);
+      if (highlightTimeout.current) clearTimeout(highlightTimeout.current);
+      highlightTimeout.current = setTimeout(() => setHighlighted(false), 1000);
+    }
+    prevValueRef.current = value;
+  }, [value, column.highlight]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeout.current) clearTimeout(highlightTimeout.current);
+    };
+  }, []);
 
   // Auto-open calendar on edit
   useEffect(() => {
@@ -131,6 +167,8 @@ const CellInner = <T extends Record<string, any>>({
 
   const handleDoubleClick = () => {
     if (editable) {
+      const rect = tdRef.current?.getBoundingClientRect();
+      if (rect) setCellRect({ top: rect.top, left: rect.left });
       setIsEditing(true);
     }
   };
@@ -169,6 +207,56 @@ const CellInner = <T extends Record<string, any>>({
   };
 
   const renderValue = () => {
+    // Boolean type renders as checkbox
+    if (column.type === 'boolean') {
+      const checked = value === true || value === 'true' || value === 1;
+      return (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent:
+              column.align === 'center'
+                ? 'center'
+                : column.align === 'right'
+                  ? 'flex-end'
+                  : 'flex-start',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={checked}
+            readOnly={!editable}
+            onChange={() => {
+              if (editable && onEdit) {
+                onEdit(record, column.key, !checked);
+              }
+            }}
+            style={{
+              cursor: editable ? 'pointer' : 'default',
+              accentColor: theme.tokens?.primaryColor ?? '#3b82f6',
+              width: 14,
+              height: 14,
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Select type shows the label if options exist
+    if (column.type === 'select' && column.options && !isEditing) {
+      const opts = column.options.map((opt) =>
+        typeof opt === 'string' ? { label: opt, value: opt } : opt,
+      );
+      const match = opts.find((o) => o.value === value || String(o.value) === String(value));
+      const displayVal = match
+        ? match.label
+        : column.render
+          ? column.render(value, record, index)
+          : formatValue(value, column.type as any, column.format);
+      return displayVal;
+    }
+
     const rawValue = column.render
       ? column.render(value, record, index)
       : formatValue(value, column.type, column.format);
@@ -186,6 +274,31 @@ const CellInner = <T extends Record<string, any>>({
     ) : (
       rawValue
     );
+
+    // Sparkline — renders if column.sparkline is set and value is a number array
+    if (column.sparkline && Array.isArray(value)) {
+      const sparkWidth = column.sparkline.width ?? (column.width ? column.width - 16 : 80);
+      return (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent:
+              column.align === 'center'
+                ? 'center'
+                : column.align === 'right'
+                  ? 'flex-end'
+                  : 'flex-start',
+          }}
+        >
+          <Sparkline
+            data={value as number[]}
+            config={{ ...column.sparkline, width: sparkWidth }}
+            primaryColor={theme.tokens?.primaryColor}
+          />
+        </div>
+      );
+    }
 
     if (isTreeExpander) {
       return (
@@ -229,6 +342,13 @@ const CellInner = <T extends Record<string, any>>({
     }
 
     return content;
+  };
+
+  const resolveOptions = () => {
+    if (!column.options) return [];
+    return column.options.map((opt) =>
+      typeof opt === 'string' ? { label: opt, value: opt } : opt,
+    );
   };
 
   const renderInput = () => {
@@ -281,6 +401,83 @@ const CellInner = <T extends Record<string, any>>({
       );
     }
 
+    // Select / dropdown editor
+    if (column.type === 'select') {
+      const opts = resolveOptions();
+      return (
+        <select
+          autoFocus
+          value={String(editValue ?? '')}
+          onChange={(e) => {
+            const chosen = opts.find((o) => String(o.value) === e.target.value);
+            setEditValue(chosen ? chosen.value : e.target.value);
+          }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          style={{
+            width: '100%',
+            height: '100%',
+            fontSize: 'inherit',
+            fontFamily: 'inherit',
+            boxSizing: 'border-box',
+            ...theme.editInput,
+          }}
+        >
+          {opts.map((opt) => (
+            <option key={String(opt.value)} value={String(opt.value)}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    // Large text editor — textarea overlay
+    if (column.type === 'largeText') {
+      return (
+        <div
+          style={{
+            position: 'fixed',
+            top: cellRect.top,
+            left: cellRect.left,
+            zIndex: 9999,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+            borderRadius: '6px',
+            overflow: 'hidden',
+          }}
+        >
+          <textarea
+            autoFocus
+            rows={6}
+            value={String(editValue ?? '')}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setIsEditing(false);
+                setEditValue(value);
+              } else if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                commitEdit();
+              }
+            }}
+            style={{
+              width: Math.max(column.width ?? 200, 300),
+              minHeight: 120,
+              fontSize: 'inherit',
+              fontFamily: 'inherit',
+              padding: '8px',
+              border: `2px solid ${theme.tokens?.primaryColor ?? '#3b82f6'}`,
+              borderRadius: '6px',
+              resize: 'both',
+              boxSizing: 'border-box',
+              ...theme.editInput,
+            }}
+          />
+        </div>
+      );
+    }
+
     return (
       <input
         ref={inputRef}
@@ -303,13 +500,60 @@ const CellInner = <T extends Record<string, any>>({
     );
   };
 
+  const tooltipText = column.tooltip
+    ? typeof column.tooltip === 'function'
+      ? column.tooltip(value, record)
+      : column.tooltip
+    : undefined;
+
+  const handleMouseEnter = useCallback(() => {
+    if (tooltipText) {
+      const rect = tdRef.current?.getBoundingClientRect();
+      if (rect) setTooltipPos({ left: rect.left, top: rect.bottom + 4 });
+      tooltipTimeout.current = setTimeout(() => setTooltipVisible(true), 400);
+    }
+  }, [tooltipText]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
+    setTooltipVisible(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
+    };
+  }, []);
+
+  const resolvedColSpan = column.colSpan
+    ? typeof column.colSpan === 'function'
+      ? column.colSpan(record, index)
+      : column.colSpan
+    : undefined;
+
+  const resolvedRowSpan = column.rowSpan
+    ? typeof column.rowSpan === 'function'
+      ? column.rowSpan(record, index)
+      : column.rowSpan
+    : undefined;
+
   return (
     <td
+      role="gridcell"
+      ref={tdRef}
       tabIndex={0}
+      colSpan={resolvedColSpan}
+      rowSpan={resolvedRowSpan}
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleTdKeyDown}
       onContextMenu={(e) => onContextMenu?.(record, column, e)}
       onFocus={() => onFocus?.(column)}
+      onMouseEnter={() => {
+        handleMouseEnter();
+        onCellMouseEnter?.();
+      }}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={onCellMouseDown ? (e) => onCellMouseDown(e as unknown as MouseEvent) : undefined}
       className={column.className}
       style={{
         ...theme.cell,
@@ -327,13 +571,21 @@ const CellInner = <T extends Record<string, any>>({
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         minHeight: '20px',
-        backgroundColor: isEditing
-          ? undefined
-          : (stickyStyles?.backgroundColor ??
-            theme.cell?.backgroundColor ??
-            theme.row?.backgroundColor ??
-            theme.tokens?.backgroundColor ??
-            '#fff'),
+        userSelect: column.allowTextSelection ? 'text' : 'none',
+        backgroundColor: highlighted
+          ? `${theme.tokens?.primaryColor ?? '#3b82f6'}22`
+          : isInRange
+            ? `${theme.tokens?.primaryColor ?? '#3b82f6'}18`
+            : isEditing
+              ? undefined
+              : (stickyStyles?.backgroundColor ??
+                theme.cell?.backgroundColor ??
+                theme.row?.backgroundColor ??
+                theme.tokens?.backgroundColor ??
+                '#fff'),
+        outline: isInRange ? `1px solid ${theme.tokens?.primaryColor ?? '#3b82f6'}60` : undefined,
+        outlineOffset: isInRange ? '-1px' : undefined,
+        transition: highlighted ? 'background-color 0s' : 'background-color 0.8s ease',
         opacity: isDisabled ? 0.6 : 1,
         color:
           isDisabled || isReadOnly
@@ -343,6 +595,28 @@ const CellInner = <T extends Record<string, any>>({
         ...(isDisabled && { pointerEvents: 'none' }),
       }}
     >
+      {!!tooltipVisible && !!tooltipText && (
+        <div
+          style={{
+            position: 'fixed',
+            zIndex: 9999,
+            pointerEvents: 'none',
+            background: '#1e293b',
+            color: '#fff',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            whiteSpace: 'pre-wrap',
+            maxWidth: 240,
+            lineHeight: 1.4,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            left: tooltipPos.left,
+            top: tooltipPos.top,
+          }}
+        >
+          {tooltipText}
+        </div>
+      )}
       {!!isReadOnly && !isEditing && (
         <div
           style={{
@@ -370,6 +644,25 @@ const CellInner = <T extends Record<string, any>>({
         </div>
       )}
       {isEditing ? renderInput() : renderValue()}
+      {!!enableFillHandle && (
+        <div
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            onFillHandle?.();
+          }}
+          title="Fill handle — drag to fill"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: 8,
+            height: 8,
+            backgroundColor: theme.tokens?.primaryColor ?? '#3b82f6',
+            cursor: 'crosshair',
+            zIndex: 10,
+          }}
+        />
+      )}
     </td>
   );
 };
