@@ -12,6 +12,8 @@ interface ToolbarProps<T = any> {
   filters?: Record<string, string>;
   onColumnsPanel?: () => void;
   onImport?: (data: T[]) => void;
+  onCommentToggle?: () => void;
+  commentMode?: boolean;
 }
 
 const DEFAULT_ICONS: Record<string, ReactNode> = {
@@ -57,6 +59,8 @@ export const Toolbar: FC<ToolbarProps> = ({
   filters = {},
   onColumnsPanel,
   onImport,
+  onCommentToggle,
+  commentMode = false,
 }) => {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
@@ -423,6 +427,40 @@ export const Toolbar: FC<ToolbarProps> = ({
                 </span>
               </button>
             </div>
+          );
+        }
+
+        // Comment mode toggle
+        if (itemKey === 'comment') {
+          const config = isString ? {} : (item as Partial<ToolbarItem>);
+          return (
+            <button
+              key="comment-toggle"
+              onClick={onCommentToggle}
+              style={buttonStyle(commentMode, config.style as CSSProperties)}
+              title={commentMode ? 'Exit comment mode' : 'Enter comment mode'}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>
+                {isString
+                  ? commentMode
+                    ? 'Exit Comments'
+                    : 'Comment'
+                  : ((item as Partial<ToolbarItem>).label ??
+                    (commentMode ? 'Exit Comments' : 'Comment'))}
+              </span>
+            </button>
           );
         }
 

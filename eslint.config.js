@@ -10,7 +10,7 @@ import vitest from 'eslint-plugin-vitest';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
-  globalIgnores(['dist', 'node_modules', '*.config.js']),
+  globalIgnores(['dist', 'node_modules', '*.config.js', '.storybook/**', 'src/stories/**']),
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked.map((config) => ({
     ...config,

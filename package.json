@@ -42,7 +42,9 @@
     "preview": "vite preview",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "lint-staged": {
     "*.{js,ts,tsx,jsx,css}": [
@@ -56,6 +58,9 @@
     "react-native": "*"
   },
   "devDependencies": {
+    "@storybook/addon-essentials": "^8.6.12",
+    "@storybook/react-vite": "^8.6.12",
+    "storybook": "^8.6.12",
     "@eslint/js": "^9.39.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

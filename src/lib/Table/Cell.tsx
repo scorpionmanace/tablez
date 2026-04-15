@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, memo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { FC, CSSProperties, MouseEvent, KeyboardEvent, ChangeEvent } from 'react';
-import type { Column, TableTheme } from '../types';
+import type { Column, TableTheme, CellComment } from '../types';
 import { isImageResult } from '../core/formulas';
 import { formatValue } from '../core/formatter';
 import { Calendar } from '../components/Calendar';
 import { Sparkline } from '../components/Sparkline';
+import { CommentPopover } from './CommentPopover';
 
 interface CellProps<T> {
   record: T;
@@ -30,6 +32,12 @@ interface CellProps<T> {
   isInRange?: boolean;
   enableFillHandle?: boolean;
   onFillHandle?: () => void;
+  // Comments
+  comments?: CellComment[];
+  commentMode?: boolean;
+  onAddComment?: (text: string) => void;
+  onDeleteComment?: (id: string) => void;
+  onResolveComment?: (id: string) => void;
 }
 
 const CellInner = <T extends Record<string, any>>({
@@ -55,6 +63,11 @@ const CellInner = <T extends Record<string, any>>({
   isInRange = false,
   enableFillHandle = false,
   onFillHandle,
+  comments = [],
+  commentMode = false,
+  onAddComment,
+  onDeleteComment,
+  onResolveComment,
 }: CellProps<T>) => {
   const value = record[column.key];
   const [isEditing, setIsEditing] = useState(false);
@@ -63,6 +76,11 @@ const CellInner = <T extends Record<string, any>>({
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const [cellRect, setCellRect] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [commentPopoverOpen, setCommentPopoverOpen] = useState(false);
+  const [commentPopoverPos, setCommentPopoverPos] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  });
   const [highlighted, setHighlighted] = useState(false);
   const tooltipTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const highlightTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -165,6 +183,18 @@ const CellInner = <T extends Record<string, any>>({
     }
   };
 
+  const openCommentPopover = useCallback(() => {
+    const rect = tdRef.current?.getBoundingClientRect();
+    if (rect) {
+      setCellRect({ top: rect.top, left: rect.left });
+      setCommentPopoverPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+      });
+    }
+    setCommentPopoverOpen(true);
+  }, []);
+
   const handleDoubleClick = () => {
     if (editable) {
       const rect = tdRef.current?.getBoundingClientRect();
@@ -172,6 +202,13 @@ const CellInner = <T extends Record<string, any>>({
       setIsEditing(true);
     }
   };
+
+  // In comment mode, a single click opens the popover
+  const handleClick = useCallback(() => {
+    if (commentMode) {
+      openCommentPopover();
+    }
+  }, [commentMode, openCommentPopover]);
 
   const handleBlur = () => {
     commitEdit();
@@ -537,6 +574,9 @@ const CellInner = <T extends Record<string, any>>({
       : column.rowSpan
     : undefined;
 
+  const hasComments = comments.length > 0;
+  const hasUnresolved = comments.some((c) => !c.resolved);
+
   return (
     <td
       role="gridcell"
@@ -545,6 +585,7 @@ const CellInner = <T extends Record<string, any>>({
       colSpan={resolvedColSpan}
       rowSpan={resolvedRowSpan}
       onDoubleClick={handleDoubleClick}
+      onClick={handleClick}
       onKeyDown={handleTdKeyDown}
       onContextMenu={(e) => onContextMenu?.(record, column, e)}
       onFocus={() => onFocus?.(column)}
@@ -663,6 +704,58 @@ const CellInner = <T extends Record<string, any>>({
           }}
         />
       )}
+
+      {/* Comment marker — triangle in the top-right corner */}
+      {!!(hasComments || commentMode) && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            openCommentPopover();
+          }}
+          title={hasComments ? `${comments.length} comment(s)` : 'Add comment'}
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: 0,
+            height: 0,
+            borderStyle: 'solid',
+            borderWidth: '0 8px 8px 0',
+            borderColor: `transparent ${
+              commentMode && !hasComments
+                ? `${theme.tokens?.primaryColor ?? '#3b82f6'}60`
+                : hasUnresolved
+                  ? (theme.tokens?.primaryColor ?? '#3b82f6')
+                  : '#94a3b8'
+            } transparent transparent`,
+            cursor: 'pointer',
+            zIndex: 5,
+            pointerEvents: 'auto',
+          }}
+        />
+      )}
+
+      {/* Comment popover rendered in a portal */}
+      {!!commentPopoverOpen &&
+        createPortal(
+          <CommentPopover
+            comments={comments}
+            commentMode={commentMode}
+            theme={theme}
+            position={commentPopoverPos}
+            onAdd={(text) => {
+              onAddComment?.(text);
+              setCommentPopoverOpen(false);
+            }}
+            onDelete={(id) => {
+              onDeleteComment?.(id);
+              if (comments.length <= 1) setCommentPopoverOpen(false);
+            }}
+            onResolve={(id) => onResolveComment?.(id)}
+            onClose={() => setCommentPopoverOpen(false)}
+          />,
+          document.body,
+        )}
     </td>
   );
 };

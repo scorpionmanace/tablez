@@ -173,6 +173,8 @@ export interface TableSettings extends BaseTableSettings {
   animateRows?: boolean;
   /** Accessible label for the table element */
   ariaLabel?: string;
+  /** Enable cell-level commenting for multi-user collaboration */
+  enableComments?: boolean;
 }
 
 export interface TreeSettings<T = any> {
@@ -209,7 +211,15 @@ export interface ToolbarItem<T = any> {
 export interface ToolbarSettings<T = any> {
   enabled?: boolean;
   position?: 'top' | 'bottom';
-  items?: (ToolbarItem<T> | 'download' | 'search' | 'columns' | 'import' | 'separator')[];
+  items?: (
+    | ToolbarItem<T>
+    | 'download'
+    | 'search'
+    | 'columns'
+    | 'import'
+    | 'comment'
+    | 'separator'
+  )[];
   downloadOptions?: ('csv' | 'xlsx' | 'pdf' | 'tsv')[];
   className?: string;
   style?: CSSProperties;
@@ -313,6 +323,28 @@ export interface SidePanelSettings {
   width?: number;
 }
 
+/**
+ * A comment attached to a specific cell, identified by rowKey + columnKey.
+ * Designed for multi-user collaboration: the table emits new/deleted/resolved
+ * comments via callbacks and displays whatever is in the `comments` prop.
+ */
+export interface CellComment {
+  /** Unique identifier for this comment */
+  id: string;
+  /** Row identifier matching the value returned by rowSettings.key */
+  rowKey: string | number;
+  /** Column key the comment is attached to */
+  columnKey: string;
+  /** Comment body text */
+  text: string;
+  /** Display name of the author */
+  author?: string;
+  /** ISO 8601 string or epoch-ms timestamp */
+  timestamp?: string | number;
+  /** Whether this comment thread has been resolved */
+  resolved?: boolean;
+}
+
 export interface InfiniteScrollSettings {
   /** Callback fired when the user scrolls near the bottom */
   onLoadMore: () => void;
@@ -349,6 +381,16 @@ export interface TableProps<T extends Record<string, any>> {
   filters?: TableFilters;
   /** Controlled selection — array of row keys that should be selected */
   selectedRows?: (string | number)[];
+
+  // Comments (multi-user collaboration)
+  /** Controlled list of cell comments to display */
+  comments?: CellComment[];
+  /** Fired when the user submits a new comment. id is pre-generated (nanoid-style). */
+  onCommentAdd?: (comment: CellComment) => void;
+  /** Fired when the user deletes a comment */
+  onCommentDelete?: (commentId: string) => void;
+  /** Fired when the user marks a comment thread as resolved */
+  onCommentResolve?: (commentId: string) => void;
 
   // Advanced
   components?: TableComponents;

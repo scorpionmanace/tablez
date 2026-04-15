@@ -11,6 +11,7 @@ import type {
   TableSortDirection,
   ContextMenuItem,
   ContextMenuDefaultOption,
+  CellComment,
 } from '../types';
 import { Header } from '../Header/Header';
 import { Row } from './Row';
@@ -39,6 +40,10 @@ export const Table = <T extends Record<string, any>>({
   sortState: propSortState,
   filters: propFilters,
   selectedRows: propSelectedRows,
+  comments: propComments,
+  onCommentAdd,
+  onCommentDelete,
+  onCommentResolve,
   components = {},
 }: TableProps<T>) => {
   // Extract settings with defaults
@@ -882,6 +887,55 @@ export const Table = <T extends Record<string, any>>({
   // ── Side Panel ────────────────────────────────────────────────
   const [sidePanelOpen, setSidePanelOpen] = useState(settings.sidePanel?.defaultOpen ?? false);
 
+  // ── Comments ──────────────────────────────────────────────────
+  const [commentMode, setCommentMode] = useState(false);
+  // Support both controlled (propComments) and uncontrolled internal state
+  const [internalComments, setInternalComments] = useState<CellComment[]>([]);
+  const comments = propComments ?? internalComments;
+
+  const handleCommentAdd = useCallback(
+    (rowKey: string | number, columnKey: string, text: string) => {
+      const comment: CellComment = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        rowKey,
+        columnKey,
+        text,
+        timestamp: new Date().toISOString(),
+      };
+      if (onCommentAdd) {
+        onCommentAdd(comment);
+      } else {
+        setInternalComments((prev) => [...prev, comment]);
+      }
+      setCommentMode(false);
+    },
+    [onCommentAdd],
+  );
+
+  const handleCommentDelete = useCallback(
+    (commentId: string) => {
+      if (onCommentDelete) {
+        onCommentDelete(commentId);
+      } else {
+        setInternalComments((prev) => prev.filter((c) => c.id !== commentId));
+      }
+    },
+    [onCommentDelete],
+  );
+
+  const handleCommentResolve = useCallback(
+    (commentId: string) => {
+      if (onCommentResolve) {
+        onCommentResolve(commentId);
+      } else {
+        setInternalComments((prev) =>
+          prev.map((c) => (c.id === commentId ? { ...c, resolved: true } : c)),
+        );
+      }
+    },
+    [onCommentResolve],
+  );
+
   // ── Infinite Scroll ────────────────────────────────────────────
   const infiniteScrollCfg = settings.infiniteScroll;
   useEffect(() => {
@@ -936,6 +990,8 @@ export const Table = <T extends Record<string, any>>({
           filters={filters}
           onColumnsPanel={() => setSidePanelOpen((v) => !v)}
           onImport={onDataChange}
+          onCommentToggle={() => setCommentMode((v) => !v)}
+          commentMode={commentMode}
         />
       )}
       {!!paginationEnabled &&
@@ -1075,6 +1131,13 @@ export const Table = <T extends Record<string, any>>({
                     onRowDragOver={handleRowDragOver}
                     onRowDrop={handleRowDrop}
                     isDragOver={dragOverIndex === idx}
+                    comments={comments.filter((c) => c.rowKey === getRowKey(record))}
+                    commentMode={!!commentMode && settings.enableComments !== false}
+                    onAddComment={(columnKey: string, text: string) =>
+                      handleCommentAdd(getRowKey(record), columnKey, text)
+                    }
+                    onDeleteComment={handleCommentDelete}
+                    onResolveComment={handleCommentResolve}
                     style={{
                       position: 'sticky',
                       top: stickyTop,
@@ -1145,6 +1208,13 @@ export const Table = <T extends Record<string, any>>({
                         onRowDragOver={handleRowDragOver}
                         onRowDrop={handleRowDrop}
                         isDragOver={dragOverIndex === originalIndex}
+                        comments={comments.filter((c) => c.rowKey === getRowKey(record))}
+                        commentMode={!!commentMode && settings.enableComments !== false}
+                        onAddComment={(columnKey: string, text: string) =>
+                          handleCommentAdd(getRowKey(record), columnKey, text)
+                        }
+                        onDeleteComment={handleCommentDelete}
+                        onResolveComment={handleCommentResolve}
                       />
                     );
                   })}
@@ -1216,6 +1286,13 @@ export const Table = <T extends Record<string, any>>({
                         isDragOver={dragOverIndex === originalIndex}
                         onGroupToggle={handleGroupToggle}
                         animateRows={settings.animateRows}
+                        comments={comments.filter((c) => c.rowKey === getRowKey(record))}
+                        commentMode={!!commentMode && settings.enableComments !== false}
+                        onAddComment={(columnKey: string, text: string) =>
+                          handleCommentAdd(getRowKey(record), columnKey, text)
+                        }
+                        onDeleteComment={handleCommentDelete}
+                        onResolveComment={handleCommentResolve}
                       />
                       {!!settings.masterDetail &&
                         !(record as any).__isGroupRow &&
@@ -1311,6 +1388,8 @@ export const Table = <T extends Record<string, any>>({
           filters={filters}
           onColumnsPanel={() => setSidePanelOpen((v) => !v)}
           onImport={onDataChange}
+          onCommentToggle={() => setCommentMode((v) => !v)}
+          commentMode={commentMode}
         />
       )}
       {!!paginationEnabled &&

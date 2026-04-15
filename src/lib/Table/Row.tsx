@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import type { CSSProperties, MouseEvent } from 'react';
-import type { Column, TableTheme, SelectionSettings, TableSettings } from '../types';
+import type { Column, TableTheme, SelectionSettings, TableSettings, CellComment } from '../types';
 import { Cell } from './Cell';
 import { calculateColumnOffsets } from '../core/engine';
 
@@ -48,6 +48,12 @@ interface RowProps<T> {
   onFillHandle?: () => void;
   // Row animation
   animateRows?: boolean;
+  // Comments
+  comments?: CellComment[];
+  commentMode?: boolean;
+  onAddComment?: (columnKey: string, text: string) => void;
+  onDeleteComment?: (id: string) => void;
+  onResolveComment?: (id: string) => void;
 }
 
 const RowInner = <T extends Record<string, any>>({
@@ -87,6 +93,11 @@ const RowInner = <T extends Record<string, any>>({
   enableFillHandle = false,
   onFillHandle,
   animateRows = false,
+  comments = [],
+  commentMode = false,
+  onAddComment,
+  onDeleteComment,
+  onResolveComment,
 }: RowProps<T>) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -356,6 +367,11 @@ const RowInner = <T extends Record<string, any>>({
             isInRange={isCellInRange?.(index, idx) ?? false}
             enableFillHandle={enableFillHandle && isCellInRange?.(index, idx) ? true : false}
             onFillHandle={onFillHandle}
+            comments={comments.filter((c) => c.columnKey === col.key)}
+            commentMode={commentMode}
+            onAddComment={(text) => onAddComment?.(col.key, text)}
+            onDeleteComment={onDeleteComment}
+            onResolveComment={onResolveComment}
           />
         );
       })}
