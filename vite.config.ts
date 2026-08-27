@@ -9,8 +9,10 @@ export default defineConfig({
   plugins: [
     react(),
     dts({
+      tsconfigPath: 'tsconfig.app.json',
       include: ['src/lib'],
       insertTypesEntry: true,
+      rollupTypes: true,
     }),
   ],
   build: {
@@ -21,8 +23,12 @@ export default defineConfig({
         native: resolve(__dirname, 'src/lib/native/index.ts'),
       },
       name: 'Tablez',
-      fileName: (format, entryName) =>
-        `${entryName === 'main' ? 'tablez' : entryName}.${format}.js`,
+      fileName: (format, entryName) => {
+        const base = entryName === 'main' ? 'tablez' : entryName;
+        // .cjs so Node treats the CommonJS build as CommonJS despite
+        // "type": "module"; .js is fine for the ESM build.
+        return format === 'es' ? `${base}.es.js` : `${base}.cjs`;
+      },
     },
     rollupOptions: {
       external: ['react', 'react-dom', 'react/jsx-runtime', 'react-native'],

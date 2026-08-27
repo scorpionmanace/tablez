@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import type { MouseEvent as ReactMouseEventGeneric } from 'react';
 import { createPortal } from 'react-dom';
-import type { FC, UIEvent, MouseEvent as ReactMouseEvent } from 'react';
+import type { FC, ReactElement, UIEvent, MouseEvent as ReactMouseEvent } from 'react';
 import type {
   TableProps,
   TableTheme,
@@ -45,7 +45,7 @@ export const Table = <T extends Record<string, any>>({
   onCommentDelete,
   onCommentResolve,
   components = {},
-}: TableProps<T>) => {
+}: TableProps<T>): ReactElement => {
   // Extract settings with defaults
   const {
     virtualized = false,

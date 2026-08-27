@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { useMemo, useState, useEffect } from 'react';
 import {
   View,
@@ -46,7 +47,7 @@ export const TableNative = <T extends Record<string, any>>({
   onFilter,
   sortState: propSortState,
   filters: propFilters,
-}: NativeTableProps<T>) => {
+}: NativeTableProps<T>): ReactElement => {
   const { loading = false, theme, containerStyle } = settings;
 
   const { height: rowHeight = 50 } = rowSettings;

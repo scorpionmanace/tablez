@@ -743,6 +743,30 @@ npm test
 
 ## 🔄 Changelog
 
+### 1.0.1
+
+Packaging fixes. No runtime behaviour changed — but 1.0.0 was unusable from
+TypeScript and from CommonJS, so upgrading is worthwhile.
+
+- **TypeScript declarations now ship.** `vite-plugin-dts` was reading the
+  solution-style `tsconfig.json`, whose `"files": []` gave it an empty program,
+  so it emitted `export {}` and nothing else. It now reads `tsconfig.app.json`
+  and rolls the declarations into a single file per entry.
+- **`require()` works.** `main` and `exports["."].require` pointed at
+  `dist/tablez.umd.js`, which Vite never emits — lib mode with multiple entries
+  produces ES and CJS only. The CommonJS build is also emitted as `.cjs` now,
+  since `"type": "module"` made the old `.cjs.js` name load as ESM and throw
+  `ERR_REQUIRE_ESM`.
+- **`react-native` is an optional peer.** It was declared `"*"` without
+  `peerDependenciesMeta`, so npm installed ~83MB of React Native into every
+  web-only consumer.
+- **Types resolve on React 19.** `Table` and `TableNative` inferred a
+  `JSX.Element` return type; React 19 removed the global `JSX` namespace, so
+  consumers could not resolve it. Both now return `ReactElement`.
+- Added `npm run verify-package`, wired into `prepublishOnly`, which fails the
+  publish if a declared entry path is missing, declarations are empty, the CJS
+  entry cannot be required, or `react-native` is not optional.
+
 ### 1.0.0
 - Row selection (single/multi, checkbox, shift-click range, controlled state)
 - Pagination (client-side, configurable page sizes and positions)
